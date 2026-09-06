@@ -5,15 +5,29 @@ namespace PogoDom.Core
 {
     public sealed class ItemSpawner
     {
+        private readonly Dictionary<PowerUpKind, int> _nextSpawnTick = new Dictionary<PowerUpKind, int>();
         private int _nextItemId = 1;
+        private bool _primed;
 
         public void EnsurePopulation(MatchState state, MatchConfig config, IRandomSource random, List<MatchEvent> events)
         {
-            EnsureKind(state, PowerUpKind.BankCrate, config.TargetBankCrates, config, random, events);
-            EnsureKind(state, PowerUpKind.Arrow, config.TargetArrows, config, random, events);
+            if (!_primed)
+            {
+                FillImmediately(state, PowerUpKind.BankCrate, config.TargetBankCrates, config, random, events);
+                FillImmediately(state, PowerUpKind.Arrow, config.TargetArrows, config, random, events);
+                FillImmediately(state, PowerUpKind.Speed, config.TargetSpeedPickups, config, random, events);
+                FillImmediately(state, PowerUpKind.Missile, config.TargetMissiles, config, random, events);
+                _primed = true;
+                return;
+            }
+
+            ReplenishWithDelay(state, PowerUpKind.BankCrate, config.TargetBankCrates, config.BankRespawnDelayTicks, config, random, events);
+            ReplenishWithDelay(state, PowerUpKind.Arrow, config.TargetArrows, config.ArrowRespawnDelayTicks, config, random, events);
+            ReplenishWithDelay(state, PowerUpKind.Speed, config.TargetSpeedPickups, config.SpeedRespawnDelayTicks, config, random, events);
+            ReplenishWithDelay(state, PowerUpKind.Missile, config.TargetMissiles, config.MissileRespawnDelayTicks, config, random, events);
         }
 
-        private void EnsureKind(
+        private void FillImmediately(
             MatchState state,
             PowerUpKind kind,
             int target,
@@ -21,21 +35,84 @@ namespace PogoDom.Core
             IRandomSource random,
             List<MatchEvent> events)
         {
+            var count = Count(state, kind);
+            while (count < target)
+            {
+                if (!TrySpawnOne(state, kind, config, random, events))
+                    return;
+                count++;
+            }
+        }
+
+        private void ReplenishWithDelay(
+            MatchState state,
+            PowerUpKind kind,
+            int target,
+            int delayTicks,
+            MatchConfig config,
+            IRandomSource random,
+            List<MatchEvent> events)
+        {
+            if (target <= 0)
+                return;
+
+            var count = Count(state, kind);
+            if (count >= target)
+            {
+                _nextSpawnTick.Remove(kind);
+                return;
+            }
+
+            int dueTick;
+            if (!_nextSpawnTick.TryGetValue(kind, out dueTick))
+            {
+                _nextSpawnTick[kind] = state.Tick + Math.Max(1, delayTicks);
+                return;
+            }
+
+            if (state.Tick < dueTick)
+                return;
+
+            if (TrySpawnOne(state, kind, config, random, events))
+            {
+                count++;
+                if (count < target)
+                    _nextSpawnTick[kind] = state.Tick + Math.Max(1, delayTicks);
+                else
+                    _nextSpawnTick.Remove(kind);
+            }
+            else
+            {
+                // Board temporarily saturated. Retry next tick instead of spinning.
+                _nextSpawnTick[kind] = state.Tick + 1;
+            }
+        }
+
+        private bool TrySpawnOne(
+            MatchState state,
+            PowerUpKind kind,
+            MatchConfig config,
+            IRandomSource random,
+            List<MatchEvent> events)
+        {
+            GridPos pos;
+            if (!TryFindSpawnPosition(state, kind, config, random, out pos))
+                return false;
+
+            var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
+            var item = new ItemState(_nextItemId++, kind, pos, arrowDirection);
+            state.Items.Add(item);
+            if (events != null)
+                events.Add(new MatchEvent(MatchEventType.ItemSpawned, position: pos, itemKind: kind));
+            return true;
+        }
+
+        private static int Count(MatchState state, PowerUpKind kind)
+        {
             var count = 0;
             for (var i = 0; i < state.Items.Count; i++)
                 if (state.Items[i].Kind == kind) count++;
-
-            while (count < target)
-            {
-                if (!TryFindSpawnPosition(state, kind, config, random, out var pos))
-                    return;
-
-                var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
-                var item = new ItemState(_nextItemId++, kind, pos, arrowDirection);
-                state.Items.Add(item);
-                events?.Add(new MatchEvent(MatchEventType.ItemSpawned, position: pos, itemKind: kind));
-                count++;
-            }
+            return count;
         }
 
         private static bool TryFindSpawnPosition(
@@ -62,7 +139,6 @@ namespace PogoDom.Core
                 return true;
             }
 
-            // Deterministic fallback scan.
             for (var y = 0; y < state.Board.Height; y++)
             {
                 for (var x = 0; x < state.Board.Width; x++)

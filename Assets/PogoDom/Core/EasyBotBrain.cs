@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace PogoDom.Core
 {
-    public sealed class EasyBotBrain
+    public sealed class EasyBotBrain : IBotBrain
     {
         private static readonly Direction[] Directions =
         {
@@ -48,7 +48,7 @@ namespace PogoDom.Core
                     score += (before - after) * 3f;
                 }
 
-                score += random.NextFloat01() * 0.2f;
+                score += random.NextFloat01() * 0.8f;
 
                 if (score > bestScore)
                 {
@@ -57,7 +57,7 @@ namespace PogoDom.Core
                 }
             }
 
-            return best;
+            return bestScore == float.NegativeInfinity ? Direction.None : best;
         }
 
         private static ItemState FindNearestItem(MatchState state, GridPos from, PowerUpKind kind)

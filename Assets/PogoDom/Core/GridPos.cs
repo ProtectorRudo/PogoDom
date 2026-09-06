@@ -1,0 +1,25 @@
+using System;
+
+namespace PogoDom.Core
+{
+    [Serializable]
+    public readonly struct GridPos : IEquatable<GridPos>
+    {
+        public int X { get; }
+        public int Y { get; }
+
+        public GridPos(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public bool Equals(GridPos other) => X == other.X && Y == other.Y;
+        public override bool Equals(object obj) => obj is GridPos other && Equals(other);
+        public override int GetHashCode() => (X * 397) ^ Y;
+        public override string ToString() => $"({X},{Y})";
+
+        public static bool operator ==(GridPos left, GridPos right) => left.Equals(right);
+        public static bool operator !=(GridPos left, GridPos right) => !left.Equals(right);
+    }
+}

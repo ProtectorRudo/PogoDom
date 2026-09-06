@@ -1,0 +1,14 @@
+{
+  "name": "PogoDom.Editor",
+  "rootNamespace": "PogoDom.Editor",
+  "references": ["PogoDom.Runtime", "PogoDom.Core"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

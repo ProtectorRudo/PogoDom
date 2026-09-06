@@ -7,7 +7,7 @@ namespace PogoDom.Core
         private readonly MatchConfig _config;
         private readonly IRandomSource _random;
         private readonly ItemSpawner _spawner;
-        private readonly EasyBotBrain _easyBot;
+        private readonly BotDirector _bots;
         private bool _finishEventSent;
 
         public MatchRunner(MatchConfig config, IRandomSource random)
@@ -15,7 +15,7 @@ namespace PogoDom.Core
             _config = config;
             _random = random;
             _spawner = new ItemSpawner();
-            _easyBot = new EasyBotBrain();
+            _bots = new BotDirector();
         }
 
         public void Initialize(MatchState state)
@@ -35,72 +35,41 @@ namespace PogoDom.Core
 
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
 
-            // 1) Effects on the square where the player landed during the previous tick.
+            // Landing effects from the previous bounce happen before repainting the square.
+            for (var i = 0; i < state.Players.Count; i++)
+                PowerUpResolver.ApplyItemUnderPlayer(state, state.Players[i], _config, result.Events);
+
+            PaintPlayers(state, state.Players, result.Events);
+
+            var desired = ResolveDirections(state, externalDirections);
+            RunMovementPhase(state, desired, result, 1);
+
+            // Speed is deliberately implemented as a second real landing, not a visual multiplier.
+            // This means an accelerated player can paint/steal and collect an item at the intermediate square.
+            var speedPlayers = new List<PlayerState>();
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
-                ApplyItemUnderPlayer(state, player, result.Events);
+                if (player.HasSpeed && !player.IsStunned)
+                    speedPlayers.Add(player);
             }
 
-            // 2) Paint current positions. This deliberately happens AFTER banking.
-            for (var i = 0; i < state.Players.Count; i++)
+            if (speedPlayers.Count > 0)
             {
-                var player = state.Players[i];
-                if (state.Board.OwnerAt(player.Position) != player.Id)
-                {
-                    state.Board.SetOwner(player.Position, player.Id);
-                    result.Events.Add(new MatchEvent(MatchEventType.TilePainted, player.Id, player.Position));
-                }
+                for (var i = 0; i < speedPlayers.Count; i++)
+                    PowerUpResolver.ApplyItemUnderPlayer(state, speedPlayers[i], _config, result.Events);
+
+                PaintPlayers(state, speedPlayers, result.Events);
+
+                var speedDirections = new Dictionary<int, Direction>();
+                for (var i = 0; i < state.Players.Count; i++)
+                    speedDirections[state.Players[i].Id] = Direction.None;
+                for (var i = 0; i < speedPlayers.Count; i++)
+                    speedDirections[speedPlayers[i].Id] = speedPlayers[i].CurrentDirection;
+
+                RunMovementPhase(state, speedDirections, result, 2);
             }
 
-            // 3) Resolve desired directions.
-            var desired = new Dictionary<int, Direction>(state.Players.Count);
-            for (var i = 0; i < state.Players.Count; i++)
-            {
-                var player = state.Players[i];
-                result.FromPositions[player.Id] = player.Position;
-
-                if (player.IsStunned)
-                {
-                    player.StunTicksRemaining--;
-                    desired[player.Id] = Direction.None;
-                    continue;
-                }
-
-                Direction direction;
-                if (player.IsHuman)
-                {
-                    direction = externalDirections != null && externalDirections.TryGetValue(player.Id, out var supplied)
-                        ? supplied
-                        : player.CurrentDirection;
-                }
-                else
-                {
-                    direction = _easyBot.ChooseDirection(state, player, _config, _random);
-                }
-
-                if (direction != Direction.None)
-                    player.CurrentDirection = direction;
-                desired[player.Id] = direction;
-            }
-
-            // 4) Simultaneous movement.
-            var resolved = MovementResolver.Resolve(state.Board, state.Players, desired, _random);
-            for (var i = 0; i < state.Players.Count; i++)
-            {
-                var player = state.Players[i];
-                var from = player.Position;
-                var to = resolved[player.Id];
-                player.Position = to;
-                result.ToPositions[player.Id] = to;
-
-                result.Events.Add(new MatchEvent(
-                    from == to ? MatchEventType.PlayerBlocked : MatchEventType.PlayerMoved,
-                    player.Id,
-                    to));
-            }
-
-            // 5) Remaining arrows rotate periodically.
             if (_config.ArrowRotationIntervalTicks > 0 && (state.Tick + 1) % _config.ArrowRotationIntervalTicks == 0)
             {
                 for (var i = 0; i < state.Items.Count; i++)
@@ -111,8 +80,8 @@ namespace PogoDom.Core
                 }
             }
 
-            // 6) Immediately refill consumed slots; newly spawned items cannot trigger until next tick.
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
+            AdvanceStatusTimers(state);
 
             state.Tick++;
             state.RemainingSeconds -= _config.TickSeconds;
@@ -125,35 +94,98 @@ namespace PogoDom.Core
             return result;
         }
 
-        private static void RemoveItem(MatchState state, ItemState item)
+        private Dictionary<int, Direction> ResolveDirections(MatchState state, IReadOnlyDictionary<int, Direction> externalDirections)
         {
-            state.Items.Remove(item);
+            var desired = new Dictionary<int, Direction>(state.Players.Count);
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                var player = state.Players[i];
+                if (player.IsStunned)
+                {
+                    desired[player.Id] = Direction.None;
+                    continue;
+                }
+
+                Direction direction;
+                if (player.IsHuman)
+                {
+                    Direction supplied;
+                    direction = externalDirections != null && externalDirections.TryGetValue(player.Id, out supplied)
+                        ? supplied
+                        : player.CurrentDirection;
+                }
+                else
+                {
+                    direction = _bots.ChooseDirection(state, player, _config, _random);
+                }
+
+                if (direction != Direction.None)
+                    player.CurrentDirection = direction;
+                desired[player.Id] = direction;
+            }
+            return desired;
         }
 
-        private void ApplyItemUnderPlayer(MatchState state, PlayerState player, List<MatchEvent> events)
+        private void RunMovementPhase(MatchState state, IReadOnlyDictionary<int, Direction> directions, TickResult result, int phase)
         {
-            var item = state.ItemAt(player.Position);
-            if (item == null)
-                return;
-
-            switch (item.Kind)
+            var resolved = MovementResolver.Resolve(state.Board, state.Players, directions, _random);
+            for (var i = 0; i < state.Players.Count; i++)
             {
-                case PowerUpKind.BankCrate:
+                var player = state.Players[i];
+                var from = player.Position;
+                var to = resolved[player.Id];
+
+                if (!result.FromPositions.ContainsKey(player.Id))
+                    result.FromPositions[player.Id] = from;
+
+                player.Position = to;
+                result.ToPositions[player.Id] = to;
+                result.MovementSteps.Add(new MovementStep(player.Id, from, to, phase));
+
+                result.Events.Add(new MatchEvent(
+                    from == to ? MatchEventType.PlayerBlocked : MatchEventType.PlayerMoved,
+                    player.Id,
+                    to,
+                    phase));
+            }
+        }
+
+        private static void PaintPlayers(MatchState state, IReadOnlyList<PlayerState> players, List<MatchEvent> events)
+        {
+            for (var i = 0; i < players.Count; i++)
+            {
+                var player = players[i];
+                var previousOwner = state.Board.OwnerAt(player.Position);
+                if (previousOwner == player.Id)
+                    continue;
+
+                state.Board.SetOwner(player.Position, player.Id);
+                if (previousOwner >= 0)
                 {
-                    var banked = BankingResolver.Bank(state, player);
-                    events.Add(new MatchEvent(MatchEventType.Banked, player.Id, player.Position, banked, item.Kind));
-                    RemoveItem(state, item);
-                    events.Add(new MatchEvent(MatchEventType.ItemConsumed, player.Id, player.Position, banked, item.Kind));
-                    break;
+                    events.Add(new MatchEvent(
+                        MatchEventType.TileStolen,
+                        player.Id,
+                        player.Position,
+                        1,
+                        PowerUpKind.None,
+                        previousOwner));
                 }
-                case PowerUpKind.Arrow:
+                else
                 {
-                    var painted = ArrowResolver.Apply(state, player, item.ArrowDirection);
-                    events.Add(new MatchEvent(MatchEventType.ArrowUsed, player.Id, player.Position, painted, item.Kind));
-                    RemoveItem(state, item);
-                    events.Add(new MatchEvent(MatchEventType.ItemConsumed, player.Id, player.Position, painted, item.Kind));
-                    break;
+                    events.Add(new MatchEvent(MatchEventType.TilePainted, player.Id, player.Position, 1));
                 }
+            }
+        }
+
+        private static void AdvanceStatusTimers(MatchState state)
+        {
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                var player = state.Players[i];
+                if (player.StunTicksRemaining > 0)
+                    player.StunTicksRemaining--;
+                if (player.SpeedTicksRemaining > 0)
+                    player.SpeedTicksRemaining--;
             }
         }
 

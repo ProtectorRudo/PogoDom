@@ -11,6 +11,8 @@ namespace PogoDom.Core
         {
             EnsureKind(state, PowerUpKind.BankCrate, config.TargetBankCrates, config, random, events);
             EnsureKind(state, PowerUpKind.Arrow, config.TargetArrows, config, random, events);
+            EnsureKind(state, PowerUpKind.Speed, config.TargetSpeedPickups, config, random, events);
+            EnsureKind(state, PowerUpKind.Missile, config.TargetMissiles, config, random, events);
         }
 
         private void EnsureKind(
@@ -27,13 +29,15 @@ namespace PogoDom.Core
 
             while (count < target)
             {
-                if (!TryFindSpawnPosition(state, kind, config, random, out var pos))
+                GridPos pos;
+                if (!TryFindSpawnPosition(state, kind, config, random, out pos))
                     return;
 
                 var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
                 var item = new ItemState(_nextItemId++, kind, pos, arrowDirection);
                 state.Items.Add(item);
-                events?.Add(new MatchEvent(MatchEventType.ItemSpawned, position: pos, itemKind: kind));
+                if (events != null)
+                    events.Add(new MatchEvent(MatchEventType.ItemSpawned, position: pos, itemKind: kind));
                 count++;
             }
         }
@@ -62,7 +66,6 @@ namespace PogoDom.Core
                 return true;
             }
 
-            // Deterministic fallback scan.
             for (var y = 0; y < state.Board.Height; y++)
             {
                 for (var x = 0; x < state.Board.Width; x++)

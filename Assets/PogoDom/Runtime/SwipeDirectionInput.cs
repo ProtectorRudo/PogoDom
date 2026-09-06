@@ -11,10 +11,25 @@ namespace PogoDom.Runtime
     {
         [SerializeField] private float minimumSwipePixels = 45f;
 
-        private Vector2 _start;
-        private bool _tracking;
+        private SwipeGestureTracker _gesture;
 
         public Direction CurrentDirection { get; private set; } = Direction.Up;
+
+        private void Awake()
+        {
+            RebuildGestureTracker();
+        }
+
+        private void OnValidate()
+        {
+            if (minimumSwipePixels < 1f) minimumSwipePixels = 1f;
+            if (Application.isPlaying) RebuildGestureTracker();
+        }
+
+        private void RebuildGestureTracker()
+        {
+            _gesture = new SwipeGestureTracker(Mathf.Max(1f, minimumSwipePixels));
+        }
 
         private void Update()
         {
@@ -41,18 +56,23 @@ namespace PogoDom.Runtime
 
         private void ReadPointer()
         {
+            if (_gesture == null) RebuildGestureTracker();
+
 #if ENABLE_INPUT_SYSTEM
             if (Touchscreen.current != null)
             {
                 var touch = Touchscreen.current.primaryTouch;
+                var position = touch.position.ReadValue();
                 if (touch.press.wasPressedThisFrame)
+                    _gesture.Begin(position.x, position.y);
+
+                if (_gesture.IsTracking && touch.press.isPressed)
+                    CommitIfReady(position);
+
+                if (_gesture.IsTracking && touch.press.wasReleasedThisFrame)
                 {
-                    _start = touch.position.ReadValue();
-                    _tracking = true;
-                }
-                else if (_tracking && touch.press.wasReleasedThisFrame)
-                {
-                    CompleteSwipe(touch.position.ReadValue());
+                    CommitIfReady(position);
+                    _gesture.End();
                 }
                 return;
             }
@@ -60,14 +80,17 @@ namespace PogoDom.Runtime
             var mouse = Mouse.current;
             if (mouse != null)
             {
+                var position = mouse.position.ReadValue();
                 if (mouse.leftButton.wasPressedThisFrame)
+                    _gesture.Begin(position.x, position.y);
+
+                if (_gesture.IsTracking && mouse.leftButton.isPressed)
+                    CommitIfReady(position);
+
+                if (_gesture.IsTracking && mouse.leftButton.wasReleasedThisFrame)
                 {
-                    _start = mouse.position.ReadValue();
-                    _tracking = true;
-                }
-                else if (_tracking && mouse.leftButton.wasReleasedThisFrame)
-                {
-                    CompleteSwipe(mouse.position.ReadValue());
+                    CommitIfReady(position);
+                    _gesture.End();
                 }
             }
 #else
@@ -75,40 +98,39 @@ namespace PogoDom.Runtime
             {
                 var touch = Input.GetTouch(0);
                 if (touch.phase == TouchPhase.Began)
+                    _gesture.Begin(touch.position.x, touch.position.y);
+
+                if (_gesture.IsTracking && (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary))
+                    CommitIfReady(touch.position);
+
+                if (_gesture.IsTracking && (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled))
                 {
-                    _start = touch.position;
-                    _tracking = true;
-                }
-                else if (_tracking && (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled))
-                {
-                    CompleteSwipe(touch.position);
+                    CommitIfReady(touch.position);
+                    _gesture.End();
                 }
                 return;
             }
 
+            var mousePosition = (Vector2)Input.mousePosition;
             if (Input.GetMouseButtonDown(0))
+                _gesture.Begin(mousePosition.x, mousePosition.y);
+
+            if (_gesture.IsTracking && Input.GetMouseButton(0))
+                CommitIfReady(mousePosition);
+
+            if (_gesture.IsTracking && Input.GetMouseButtonUp(0))
             {
-                _start = Input.mousePosition;
-                _tracking = true;
-            }
-            else if (_tracking && Input.GetMouseButtonUp(0))
-            {
-                CompleteSwipe(Input.mousePosition);
+                CommitIfReady(mousePosition);
+                _gesture.End();
             }
 #endif
         }
 
-        private void CompleteSwipe(Vector2 end)
+        private void CommitIfReady(Vector2 position)
         {
-            _tracking = false;
-            var delta = end - _start;
-            if (delta.magnitude < minimumSwipePixels)
-                return;
-
-            if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
-                CurrentDirection = delta.x >= 0f ? Direction.Right : Direction.Left;
-            else
-                CurrentDirection = delta.y >= 0f ? Direction.Up : Direction.Down;
+            Direction direction;
+            if (_gesture.TryUpdate(position.x, position.y, out direction))
+                CurrentDirection = direction;
         }
     }
 }

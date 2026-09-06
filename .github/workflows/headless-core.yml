@@ -1,0 +1,28 @@
+name: Headless Core
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore headless/PogoDom.Core.Tests.csproj
+      - name: Build
+        run: dotnet build headless/PogoDom.Core.Tests.csproj --configuration Release --no-restore
+      - name: Test
+        run: dotnet test headless/PogoDom.Core.Tests.csproj --configuration Release --no-build --verbosity normal

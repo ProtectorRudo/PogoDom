@@ -75,6 +75,26 @@ namespace PogoDom.Tests.Verification
             Assert.AreEqual(0, config.TargetPadlocks);
         }
 
+        [Test]
+        public void UnityPlaytestProfilesExactlyMatchFrozenCandidateRulesets()
+        {
+            AssertConfigsEqual(RulesetPresets.LaunchM02(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.Base));
+            AssertConfigsEqual(RulesetPresets.LoopV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.LoopV2));
+            AssertConfigsEqual(RulesetPresets.PadlockV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.PadlockV2));
+            AssertConfigsEqual(RulesetPresets.ChaosV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.ChaosV2));
+            AssertConfigsEqual(RulesetPresets.CratesV1(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.CratesV1));
+        }
+
+        private static void AssertConfigsEqual(MatchConfig expected, MatchConfig actual)
+        {
+            var properties = typeof(MatchConfig).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            for (var i = 0; i < properties.Length; i++)
+            {
+                var p = properties[i];
+                Assert.AreEqual(p.GetValue(expected, null), p.GetValue(actual, null), "Playtest profile drift at " + p.Name);
+            }
+        }
+
         private static void AssertOnlyToggleDiffers(MatchConfig baseline, MatchConfig candidate, string expectedProperty)
         {
             var properties = typeof(MatchConfig).GetProperties(BindingFlags.Instance | BindingFlags.Public);

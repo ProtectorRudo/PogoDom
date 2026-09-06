@@ -10,6 +10,9 @@ namespace PogoDom.Runtime
         [Header("Determinism")]
         [SerializeField] private uint seed = 20260905u;
 
+        [Header("First Unity playtest")]
+        [SerializeField] private PlaytestRulesetMode playtestMode = PlaytestRulesetMode.Base;
+
         [Header("Prototype tuning")]
         [SerializeField] private float tileSpacing = 1.05f;
         [SerializeField] private float jumpHeight = 0.8f;
@@ -26,8 +29,9 @@ namespace PogoDom.Runtime
         private readonly Dictionary<int, Vector3> _animFrom = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, Vector3> _animTo = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, GameObject> _itemViews = new Dictionary<int, GameObject>();
+        private readonly Dictionary<int, GameObject> _hazardViews = new Dictionary<int, GameObject>();
         private float _animationT = 1f;
-        private string _lastEvent = "PogoDom M0.1";
+        private string _lastEvent = "READY";
 
         private static readonly Color Neutral = new Color(0.72f, 0.72f, 0.76f);
         private static readonly Color[] PlayerColors =
@@ -40,7 +44,7 @@ namespace PogoDom.Runtime
 
         private void Awake()
         {
-            _config = new MatchConfig();
+            _config = PlaytestMatchProfiles.Create(playtestMode);
             _state = MatchFactory.CreateClassicPrototype(_config);
             _runner = new MatchRunner(_config, new XorShiftRandom(seed));
             _runner.Initialize(_state);
@@ -52,6 +56,7 @@ namespace PogoDom.Runtime
             BuildBoard();
             BuildPlayers();
             SyncItems();
+            SyncHazards();
             PaintBoardVisuals();
 
             if (autoCreateCameraAndLight)
@@ -61,6 +66,8 @@ namespace PogoDom.Runtime
         private void Update()
         {
             AnimatePlayers();
+            AnimateItems();
+            AnimateHazards();
 
             if (_state.IsFinished)
                 return;
@@ -88,10 +95,11 @@ namespace PogoDom.Runtime
             }
 
             if (result.Events.Count > 0)
-                _lastEvent = Describe(result.Events[result.Events.Count - 1]);
+                _lastEvent = DescribeMostImportant(result.Events);
 
             PaintBoardVisuals();
             SyncItems();
+            SyncHazards();
         }
 
         private void BuildBoard()
@@ -139,34 +147,126 @@ namespace PogoDom.Runtime
 
                 if (!_itemViews.TryGetValue(item.Id, out var view))
                 {
-                    view = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    view = GameObject.CreatePrimitive(ItemPrimitive(item.Kind));
                     view.name = $"{item.Kind}_{item.Id}";
                     view.transform.SetParent(transform, false);
-                    view.transform.localScale = item.Kind == PowerUpKind.BankCrate
-                        ? new Vector3(0.5f, 0.5f, 0.5f)
-                        : new Vector3(0.52f, 0.12f, 0.20f);
-                    view.GetComponent<Renderer>().material.color = item.Kind == PowerUpKind.BankCrate
-                        ? new Color(0.60f, 0.15f, 0.82f)
-                        : new Color(1.0f, 0.45f, 0.05f);
+                    ApplyItemStyle(view, item.Kind);
                     _itemViews[item.Id] = view;
                 }
 
-                view.transform.position = World(item.Position, item.Kind == PowerUpKind.BankCrate ? 0.42f : 0.28f);
+                view.transform.position = World(item.Position, ItemHeight(item.Kind));
                 if (item.Kind == PowerUpKind.Arrow)
                     view.transform.rotation = Quaternion.Euler(0f, Yaw(item.ArrowDirection), 0f);
             }
 
-            var remove = new List<int>();
-            foreach (var pair in _itemViews)
+            RemoveDeadViews(_itemViews, alive);
+        }
+
+        private void SyncHazards()
+        {
+            var alive = new HashSet<int>();
+            for (var i = 0; i < _state.Hazards.Count; i++)
             {
-                if (!alive.Contains(pair.Key))
-                    remove.Add(pair.Key);
+                var hazard = _state.Hazards[i];
+                alive.Add(hazard.Id);
+                if (!_hazardViews.TryGetValue(hazard.Id, out var view))
+                {
+                    view = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    view.name = $"Telegraph_{hazard.Kind}_{hazard.Id}";
+                    view.transform.SetParent(transform, false);
+                    view.GetComponent<Renderer>().material.color = new Color(1f, 0.12f, 0.05f);
+                    _hazardViews[hazard.Id] = view;
+                }
+                view.transform.position = World(hazard.Position, 0.10f);
             }
+            RemoveDeadViews(_hazardViews, alive);
+        }
+
+        private void AnimateItems()
+        {
+            for (var i = 0; i < _state.Items.Count; i++)
+            {
+                var item = _state.Items[i];
+                if (item.Kind != PowerUpKind.MysteryCrate) continue;
+                if (_itemViews.TryGetValue(item.Id, out var view))
+                    view.transform.Rotate(0f, 65f * Time.deltaTime, 0f, Space.World);
+            }
+        }
+
+        private void AnimateHazards()
+        {
+            for (var i = 0; i < _state.Hazards.Count; i++)
+            {
+                var hazard = _state.Hazards[i];
+                if (!_hazardViews.TryGetValue(hazard.Id, out var view)) continue;
+                var width = (hazard.BlastRadius * 2 + 1) * tileSpacing * 0.92f;
+                var pulse = 1f + Mathf.Sin(Time.time * 10f) * 0.06f;
+                view.transform.localScale = new Vector3(width * pulse, 0.025f, width * pulse);
+            }
+        }
+
+        private static PrimitiveType ItemPrimitive(PowerUpKind kind)
+        {
+            switch (kind)
+            {
+                case PowerUpKind.Speed: return PrimitiveType.Sphere;
+                case PowerUpKind.Missile: return PrimitiveType.Capsule;
+                case PowerUpKind.Padlock: return PrimitiveType.Sphere;
+                default: return PrimitiveType.Cube;
+            }
+        }
+
+        private static void ApplyItemStyle(GameObject view, PowerUpKind kind)
+        {
+            var renderer = view.GetComponent<Renderer>();
+            switch (kind)
+            {
+                case PowerUpKind.BankCrate:
+                    view.transform.localScale = new Vector3(0.50f, 0.50f, 0.50f);
+                    renderer.material.color = new Color(0.60f, 0.15f, 0.82f);
+                    break;
+                case PowerUpKind.MysteryCrate:
+                    view.transform.localScale = new Vector3(0.52f, 0.52f, 0.52f);
+                    renderer.material.color = new Color(1.00f, 0.72f, 0.05f);
+                    break;
+                case PowerUpKind.Arrow:
+                    view.transform.localScale = new Vector3(0.52f, 0.12f, 0.20f);
+                    renderer.material.color = new Color(1.00f, 0.45f, 0.05f);
+                    break;
+                case PowerUpKind.Speed:
+                    view.transform.localScale = Vector3.one * 0.32f;
+                    renderer.material.color = new Color(0.05f, 0.90f, 1.00f);
+                    break;
+                case PowerUpKind.Missile:
+                    view.transform.localScale = new Vector3(0.18f, 0.32f, 0.18f);
+                    renderer.material.color = new Color(0.95f, 0.18f, 0.18f);
+                    break;
+                case PowerUpKind.Padlock:
+                    view.transform.localScale = Vector3.one * 0.30f;
+                    renderer.material.color = new Color(0.25f, 0.85f, 0.95f);
+                    break;
+                default:
+                    view.transform.localScale = Vector3.one * 0.28f;
+                    renderer.material.color = Color.white;
+                    break;
+            }
+        }
+
+        private static float ItemHeight(PowerUpKind kind)
+        {
+            return kind == PowerUpKind.BankCrate || kind == PowerUpKind.MysteryCrate ? 0.42f : 0.30f;
+        }
+
+        private static void RemoveDeadViews(Dictionary<int, GameObject> views, HashSet<int> alive)
+        {
+            var remove = new List<int>();
+            foreach (var pair in views)
+                if (!alive.Contains(pair.Key)) remove.Add(pair.Key);
             for (var i = 0; i < remove.Count; i++)
             {
                 var id = remove[i];
-                if (_itemViews[id] != null) Destroy(_itemViews[id]);
-                _itemViews.Remove(id);
+                if (views[id] != null) UnityEngine.Object.Destroy(views[id]);
+                views.Remove(id);
             }
         }
 
@@ -189,9 +289,7 @@ namespace PogoDom.Runtime
             foreach (var pair in _playerViews)
             {
                 var id = pair.Key;
-                if (!_animFrom.TryGetValue(id, out var from) || !_animTo.TryGetValue(id, out var to))
-                    continue;
-
+                if (!_animFrom.TryGetValue(id, out var from) || !_animTo.TryGetValue(id, out var to)) continue;
                 var p = Vector3.Lerp(from, to, Smooth01(_animationT));
                 p.y += arc;
                 pair.Value.position = p;
@@ -241,12 +339,56 @@ namespace PogoDom.Runtime
             }
         }
 
-        private string Describe(MatchEvent e)
+        private static string DescribeMostImportant(List<MatchEvent> events)
+        {
+            MatchEvent best = null;
+            var bestPriority = -1;
+            for (var i = 0; i < events.Count; i++)
+            {
+                var priority = EventPriority(events[i].Type);
+                if (priority >= bestPriority)
+                {
+                    bestPriority = priority;
+                    best = events[i];
+                }
+            }
+            return best == null ? "" : Describe(best);
+        }
+
+        private static int EventPriority(MatchEventType type)
+        {
+            switch (type)
+            {
+                case MatchEventType.MatchFinished: return 100;
+                case MatchEventType.HazardDetonated: return 90;
+                case MatchEventType.EnclosureCaptured: return 85;
+                case MatchEventType.Banked: return 80;
+                case MatchEventType.CrateOpened: return 75;
+                case MatchEventType.MissileFired: return 70;
+                case MatchEventType.PadlockActivated: return 65;
+                case MatchEventType.SpeedActivated: return 60;
+                case MatchEventType.ArrowUsed: return 60;
+                case MatchEventType.HazardTelegraphed: return 55;
+                case MatchEventType.TileProtected: return 50;
+                case MatchEventType.TileStolen: return 30;
+                default: return 0;
+            }
+        }
+
+        private static string Describe(MatchEvent e)
         {
             switch (e.Type)
             {
                 case MatchEventType.Banked: return $"P{e.PlayerId + 1} BANK +{e.Value}";
-                case MatchEventType.ArrowUsed: return $"P{e.PlayerId + 1} ARROW ({e.Value} changed)";
+                case MatchEventType.CrateOpened: return $"P{e.PlayerId + 1} CRATE → {e.ItemKind}";
+                case MatchEventType.ArrowUsed: return $"P{e.PlayerId + 1} ARROW ({e.Value})";
+                case MatchEventType.SpeedActivated: return $"P{e.PlayerId + 1} SPEED";
+                case MatchEventType.MissileFired: return $"P{e.PlayerId + 1} MISSILE → P{e.SecondaryPlayerId + 1}";
+                case MatchEventType.PadlockActivated: return $"P{e.PlayerId + 1} SHIELD";
+                case MatchEventType.EnclosureCaptured: return $"P{e.PlayerId + 1} AREA +{e.Value}";
+                case MatchEventType.HazardTelegraphed: return "TNT WARNING";
+                case MatchEventType.HazardDetonated: return $"TNT BOOM -{e.Value} tiles";
+                case MatchEventType.TileProtected: return $"P{e.SecondaryPlayerId + 1} BLOCKED STEAL";
                 case MatchEventType.MatchFinished: return "MATCH FINISHED";
                 default: return e.Type.ToString();
             }
@@ -255,14 +397,16 @@ namespace PogoDom.Runtime
         private void OnGUI()
         {
             var style = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
-            GUI.Box(new Rect(12, 12, 280, 170), "POGODOM M0.1");
-            GUI.Label(new Rect(28, 42, 250, 28), $"Time: {_state.RemainingSeconds:0.0}s", style);
+            GUI.Box(new Rect(12, 12, 320, 220), "POGODOM — UNITY PLAYTEST");
+            GUI.Label(new Rect(28, 42, 285, 24), $"Mode: {playtestMode}", style);
+            GUI.Label(new Rect(28, 66, 285, 24), $"Time: {_state.RemainingSeconds:0.0}s", style);
             for (var i = 0; i < _state.Players.Count; i++)
             {
                 var player = _state.Players[i];
-                GUI.Label(new Rect(28, 68 + i * 23, 250, 24), $"{player.Name}: {player.Score}", style);
+                GUI.Label(new Rect(28, 92 + i * 23, 285, 24), $"{player.Name}: {player.Score}", style);
             }
-            GUI.Label(new Rect(28, 158, 250, 22), _lastEvent, GUI.skin.label);
+            GUI.Label(new Rect(28, 184, 285, 22), _lastEvent, GUI.skin.label);
+            GUI.Label(new Rect(28, 204, 285, 22), "Swipe anywhere • auto-bounce", GUI.skin.label);
         }
     }
 }

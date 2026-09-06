@@ -68,7 +68,12 @@ namespace PogoDom.Runtime
             var cardWidth = Mathf.Min(safe.width * 0.88f, 620f * scale);
             var cardHeight = 116f * scale;
             var x = safe.x + (safe.width - cardWidth) * 0.5f;
-            var y = safe.yMax - cardHeight - Mathf.Max(18f * scale, safe.height * 0.035f);
+
+            // Screen.safeArea uses bottom-left screen coordinates while IMGUI uses
+            // top-left coordinates. Convert the safe bottom edge before laying out.
+            var safeBottomGui = Screen.height - safe.yMin;
+            var margin = Mathf.Max(18f * scale, safe.height * 0.035f);
+            var y = safeBottomGui - cardHeight - margin;
             var rect = new Rect(x, y, cardWidth, cardHeight);
 
             string title;

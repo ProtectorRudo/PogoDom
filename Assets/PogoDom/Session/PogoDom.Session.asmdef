@@ -1,0 +1,14 @@
+{
+  "name": "PogoDom.Session",
+  "rootNamespace": "PogoDom.Session",
+  "references": ["PogoDom.Core", "PogoDom.Meta"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

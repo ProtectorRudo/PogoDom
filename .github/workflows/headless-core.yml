@@ -16,6 +16,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Guard runtime presentation isolation
+        shell: bash
+        run: |
+          if grep -R --include='*.cs' -nE 'Time\.timeScale[[:space:]]*=' Assets/PogoDom/Runtime; then
+            echo 'Runtime presentation must never change Time.timeScale.'
+            exit 1
+          fi
+          if grep -R --include='*.cs' -nE 'AddComponent<[^>]*(Rigidbody|Collider)' Assets/PogoDom/Runtime; then
+            echo 'Runtime cosmetic/presentation code must not add gameplay physics components.'
+            exit 1
+          fi
+          if grep -nE 'renderer\.materials[[:space:]]*;' Assets/PogoDom/Runtime/PogoDomVisualQualityScaler.cs; then
+            echo 'Quality scaling must preserve shared material pooling; use MaterialPropertyBlock.'
+            exit 1
+          fi
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

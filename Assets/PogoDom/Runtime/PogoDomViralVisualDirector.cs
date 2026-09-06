@@ -101,10 +101,11 @@ namespace PogoDom.Runtime
         private void DecorateTiles()
         {
             _tiles.Clear();
-            for (var i = 0; i < transform.childCount; i++)
+            var originalChildCount = transform.childCount;
+            for (var i = 0; i < originalChildCount; i++)
             {
                 var child = transform.GetChild(i);
-                if (!child.name.StartsWith("Tile_")) continue;
+                if (!IsBaseTileName(child.name)) continue;
                 var juice = child.GetComponent<PogoDomTileJuice>();
                 if (juice == null) juice = child.gameObject.AddComponent<PogoDomTileJuice>();
                 juice.Initialize();
@@ -231,6 +232,13 @@ namespace PogoDom.Runtime
             for (var i = 0; i < transform.childCount; i++)
                 if (transform.GetChild(i).name == childName) return transform.GetChild(i);
             return null;
+        }
+
+        private static bool IsBaseTileName(string objectName)
+        {
+            return objectName.StartsWith("Tile_") &&
+                   !objectName.EndsWith("_Rim") &&
+                   !objectName.EndsWith("_Glow");
         }
 
         private static bool IsPickupName(string objectName)

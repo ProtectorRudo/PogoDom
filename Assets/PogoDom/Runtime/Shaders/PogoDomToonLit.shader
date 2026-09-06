@@ -2,7 +2,7 @@ Shader "PogoDom/ToonLit"
 {
     Properties
     {
-        _BaseColor("Base Color", Color) = (1,1,1,1)
+        [MainColor] _BaseColor("Base Color", Color) = (1,1,1,1)
         _ShadowColor("Shadow Color", Color) = (0.28,0.32,0.42,1)
         _ShadowThreshold("Shadow Threshold", Range(-0.2,1)) = 0.35
         _ShadowSoftness("Shadow Softness", Range(0.001,0.3)) = 0.08
@@ -67,6 +67,7 @@ Shader "PogoDom/ToonLit"
 
             half4 OutlineFrag(Varyings input) : SV_Target
             {
+                clip(_OutlineWidth - 0.0001h);
                 return half4(_OutlineColor.rgb, 1);
             }
             ENDHLSL

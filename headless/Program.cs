@@ -177,6 +177,7 @@ internal static class Program
         switch (variant)
         {
             case "launch": return new MatchConfig();
+            case "rivals": return new MatchConfig { BehaviorVersion = RulesetBehaviorVersion.V3 };
             case "loop": return new MatchConfig { EnableEnclosureCapture = true };
             case "loop2": return new MatchConfig { EnableEnclosureCapture = true, EnclosureCapturePolicy = EnclosureCapturePolicy.NeutralOnly };
             case "chaos": return new MatchConfig { EnableArenaChaos = true };
@@ -197,6 +198,7 @@ internal static class Program
         if (a.Missiles == 0 || a.Stuns == 0) return Fail("missile/stun loop never occurred");
         if (a.Steals == 0) return Fail("no tile stealing occurred");
         if (blockedRatio >= 0.55) return Fail("more than 55% of movement phases are blocked");
+        if (a.Variant == "rivals" && a.LeadChanges == 0) return Fail("adaptive rivals produced no leader pressure or lead changes");
         if ((a.Variant == "loop" || a.Variant == "loop2" || a.Variant == "fusion") && a.Enclosures == 0) return Fail("loop variant never produced an enclosure");
         if ((a.Variant == "chaos" || a.Variant == "chaos2" || a.Variant == "fusion") && a.HazardBlasts == 0) return Fail("chaos variant never detonated a hazard");
         if ((a.Variant == "padlock" || a.Variant == "padlock2" || a.Variant == "fusion") && a.Padlocks == 0) return Fail("padlock variant never activated a shield");

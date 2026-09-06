@@ -21,13 +21,23 @@ namespace PogoDom.Session
         public int PlayerId { get; }
         public int Value { get; }
         public int ViralityScore { get; }
+        public int Tick { get; }
 
+        // Kept for older callers/tests that create a moment without replay data.
         public HighlightMoment(HighlightKind kind, int playerId, int value, int viralityScore)
+            : this(kind, playerId, value, viralityScore, -1)
         {
+        }
+
+        public HighlightMoment(HighlightKind kind, int playerId, int value, int viralityScore, int tick)
+        {
+            if (viralityScore < 0 || viralityScore > 100) throw new ArgumentOutOfRangeException(nameof(viralityScore));
+            if (tick < -1) throw new ArgumentOutOfRangeException(nameof(tick));
             Kind = kind;
             PlayerId = playerId;
             Value = value;
             ViralityScore = viralityScore;
+            Tick = tick;
         }
     }
 
@@ -58,16 +68,16 @@ namespace PogoDom.Session
                 var e = tick.Events[i];
 
                 if (e.Type == MatchEventType.HazardDetonated && e.Value >= 5)
-                    AddOnce(HighlightKind.ArenaBlast, -1, e.Value, Math.Min(100, 65 + e.Value * 4));
+                    AddOnce(HighlightKind.ArenaBlast, -1, e.Value, Math.Min(100, 65 + e.Value * 4), state.Tick);
 
                 if (e.PlayerId != _localPlayerId) continue;
 
                 if (e.Type == MatchEventType.Banked && e.Value >= 8)
-                    AddOnce(HighlightKind.BigBank, _localPlayerId, e.Value, Math.Min(100, 50 + e.Value * 3));
+                    AddOnce(HighlightKind.BigBank, _localPlayerId, e.Value, Math.Min(100, 50 + e.Value * 3), state.Tick);
                 else if (e.Type == MatchEventType.MissileFired)
-                    AddOnce(HighlightKind.LeaderMissile, _localPlayerId, e.SecondaryPlayerId, 72);
+                    AddOnce(HighlightKind.LeaderMissile, _localPlayerId, e.SecondaryPlayerId, 72, state.Tick);
                 else if (e.Type == MatchEventType.EnclosureCaptured && e.Value >= 3)
-                    AddOnce(HighlightKind.AreaCapture, _localPlayerId, e.Value, Math.Min(100, 68 + e.Value * 4));
+                    AddOnce(HighlightKind.AreaCapture, _localPlayerId, e.Value, Math.Min(100, 68 + e.Value * 4), state.Tick);
             }
 
             var leader = MatchOutcome.Leader(state);
@@ -80,7 +90,7 @@ namespace PogoDom.Session
             }
 
             if (_enteredLateWindow && _previousLeaderId >= 0 && leaderId >= 0 && leaderId != _previousLeaderId)
-                AddOnce(HighlightKind.LateLeadChange, leaderId, 0, 85);
+                AddOnce(HighlightKind.LateLeadChange, leaderId, 0, 85, state.Tick);
 
             _previousLeaderId = leaderId;
         }
@@ -96,13 +106,13 @@ namespace PogoDom.Session
             {
                 var margin = standings[0].Score - standings[1].Score;
                 if (margin <= 5)
-                    AddOnce(HighlightKind.PhotoFinish, standings[0].PlayerId, margin, 92);
+                    AddOnce(HighlightKind.PhotoFinish, standings[0].PlayerId, margin, 92, state.Tick);
 
                 if (standings[0].PlayerId == _localPlayerId && _enteredLateWindow && _leaderAtLateWindow >= 0 && _leaderAtLateWindow != _localPlayerId)
-                    AddOnce(HighlightKind.ComebackWin, _localPlayerId, margin, 100);
+                    AddOnce(HighlightKind.ComebackWin, _localPlayerId, margin, 100, state.Tick);
             }
 
-            _moments.Sort((a, b) => b.ViralityScore.CompareTo(a.ViralityScore));
+            _moments.Sort(CompareMoments);
             return _moments;
         }
 
@@ -110,15 +120,33 @@ namespace PogoDom.Session
         {
             HighlightMoment best = null;
             for (var i = 0; i < _moments.Count; i++)
-                if (best == null || _moments[i].ViralityScore > best.ViralityScore) best = _moments[i];
+            {
+                if (best == null || CompareMoments(_moments[i], best) < 0)
+                    best = _moments[i];
+            }
             return best;
         }
 
-        private void AddOnce(HighlightKind kind, int playerId, int value, int score)
+        private void AddOnce(HighlightKind kind, int playerId, int value, int score, int tick)
         {
             for (var i = 0; i < _moments.Count; i++)
                 if (_moments[i].Kind == kind) return;
-            _moments.Add(new HighlightMoment(kind, playerId, value, score));
+            _moments.Add(new HighlightMoment(kind, playerId, value, score, tick));
+        }
+
+        private static int CompareMoments(HighlightMoment a, HighlightMoment b)
+        {
+            var byScore = b.ViralityScore.CompareTo(a.ViralityScore);
+            if (byScore != 0) return byScore;
+
+            // When moments are equally interesting, prefer the later one: it
+            // needs less context and usually keeps the share clip shorter.
+            var byTick = b.Tick.CompareTo(a.Tick);
+            if (byTick != 0) return byTick;
+
+            var byKind = a.Kind.CompareTo(b.Kind);
+            if (byKind != 0) return byKind;
+            return a.PlayerId.CompareTo(b.PlayerId);
         }
     }
 }

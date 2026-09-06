@@ -35,6 +35,16 @@ namespace PogoDom.Runtime
         private float _animationT = 1f;
         private string _lastEvent = "READY";
 
+        /// <summary>
+        /// Read-only presentation feed emitted after a deterministic tick has
+        /// already updated state and greybox views. Visual subscribers cannot
+        /// influence MatchRunner inputs or rules through this channel.
+        /// </summary>
+        public event Action<IReadOnlyList<MatchEvent>> PresentationEvents;
+
+        public uint ActiveSeed => _activeSeed;
+        public int MatchIndex => _matchIndex;
+
         private static readonly Color Neutral = new Color(0.72f, 0.72f, 0.76f);
         private static readonly Color[] PlayerColors =
         {
@@ -136,6 +146,28 @@ namespace PogoDom.Runtime
             PaintBoardVisuals();
             SyncItems();
             SyncHazards();
+            PublishPresentationEvents(result.Events);
+        }
+
+        private void PublishPresentationEvents(IReadOnlyList<MatchEvent> events)
+        {
+            if (events == null || events.Count == 0) return;
+            var handler = PresentationEvents;
+            if (handler == null) return;
+
+            var subscribers = handler.GetInvocationList();
+            for (var i = 0; i < subscribers.Length; i++)
+            {
+                try
+                {
+                    ((Action<IReadOnlyList<MatchEvent>>)subscribers[i])(events);
+                }
+                catch (Exception ex)
+                {
+                    // A broken cosmetic must never break the deterministic match.
+                    Debug.LogException(ex);
+                }
+            }
         }
 
         private void BuildBoard()

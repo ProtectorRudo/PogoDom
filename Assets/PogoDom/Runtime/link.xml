@@ -1,0 +1,16 @@
+<linker>
+  <!-- GameObject.CreatePrimitive adds these colliders internally. The visual layer
+       removes them immediately, but IL2CPP still needs the managed component types
+       to exist when the primitive is created. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.BoxCollider" preserve="all" />
+    <type fullname="UnityEngine.SphereCollider" preserve="all" />
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+  </assembly>
+
+  <!-- The mobile presentation pass reads the deterministic state for HUD-only
+       display and invokes rematch through private reflection. Preserve those members. -->
+  <assembly fullname="PogoDom.Runtime">
+    <type fullname="PogoDom.Runtime.PogoDomPrototypeBootstrap" preserve="all" />
+  </assembly>
+</linker>

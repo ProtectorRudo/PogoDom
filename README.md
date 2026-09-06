@@ -1,79 +1,86 @@
-# PogoDom — M0.1 Core Prototype
+# PogoDom
 
-Primer bloque ejecutable de PogoDom, construido como **clean-room reimplementation** en C# para Unity.
+PogoDom es un juego móvil de dominio territorial pensado para **una sola mano**: el personaje rebota automáticamente y el jugador cambia de dirección con swipes cardinales. Cada partida debe entenderse en menos de 20 segundos, durar poco, generar revancha inmediata y alimentar una guerra persistente de ciudades y naciones.
 
-## Qué ya está implementado
+## Estado actual — M0.2 Core
 
-- Tablero lógico configurable, por defecto **8×8**.
-- **4 jugadores** en las esquinas: 1 humano + 3 bots.
-- Movimiento cardinal persistente.
-- Resolución determinista de colisiones simultáneas.
-- Pintado de casillas.
-- **Bank Crate**: convierte territorio temporal en puntos, limpia ese territorio y deja la casilla actual como inicio de una nueva cadena.
-- **Arrow**: pinta desde la posición del jugador hasta un borde y rota periódicamente.
-- Spawner determinista de 3 Bank Crates + 3 Arrows.
-- RNG determinista por seed.
-- Bot Easy orientado a objetivos.
-- Timer de partida (90 s por defecto).
-- Eventos de dominio para desacoplar reglas y presentación.
-- Greybox 3D automático con cubos/cápsulas, cámara, luz, UI debug, teclado y swipe.
-- Tests EditMode para banking, choques, swaps y determinismo básico.
-- Herramienta de Unity: **PogoDom → Create M0 Prototype Scene**.
+El gameplay principal ya vive en C# puro y puede compilarse/probarse sin Unity.
 
-## Qué NO está todavía
+### Implementado
 
-- Speed boost.
-- Misiles / stun.
-- Pogo-a-Gogo enclosure.
-- El Pogo Loco / TNT.
-- Padlock.
-- Arte final, avatares, pogos, trails, festejos.
-- Meta de ciudades/naciones.
-- Online.
+- tablero 8×8;
+- 1 humano + 3 bots;
+- movimiento cardinal persistente;
+- resolución determinista de colisiones y swaps;
+- pintura y robo de casillas;
+- Bank Crates: aseguran territorio temporal como score;
+- Arrow: pinta hasta el borde;
+- Speed: 8 s iniciales de doble rebote real;
+- Missile: disparo automático al rival líder + stun inicial de 2 s;
+- power-ups con respawn escalonado para evitar spam;
+- bots Easy y Medium;
+- personalidades Balanced / Greedy / Aggressive / Banker / Chaotic;
+- standings deterministas;
+- RNG por seed;
+- input Unity de teclado + swipe;
+- greybox Unity automático;
+- tests EditMode compartidos con un harness .NET 8;
+- laboratorio headless que ejecuta partidas completas de bots en CI.
 
-Es deliberado: primero cerramos el `game feel` del núcleo y recién después agregamos superficie.
+### Hipótesis de tuning actuales
 
-## Cómo probarlo en Unity
+- match: **75 s**;
+- tick base: **0,5 s**;
+- Speed: **8 s**;
+- Missile stun: **2 s**;
+- 3 Bank Crates iniciales;
+- 1 Arrow, 1 Speed y 1 Missile iniciales;
+- replacements con cooldown para crear escasez y hotspots.
 
-1. Crear un proyecto Unity 3D vacío.
-2. Copiar la carpeta `Assets/PogoDom` dentro del proyecto.
-3. Esperar a que Unity compile.
-4. Ir a **PogoDom → Create M0 Prototype Scene**.
-5. Abrir/usar la escena creada en `Assets/PogoDom/Scenes/PogoDom_M0.unity`.
-6. Presionar Play.
+No son números cerrados: se calibrarán con simulación y luego con Unity/teléfonos.
 
-### Controles
+## Constitución del producto
 
-- PC: flechas o WASD.
-- Mobile: swipe horizontal/vertical.
-- La última dirección elegida se mantiene, como en el Pogo clásico.
+Está en [`design/PILLARS.md`](design/PILLARS.md). Resumen:
 
-## Parámetros de calibración
+**<20 s para entender · una mano · rematch irresistible · viral · personajes memorables con skills · ciudades/naciones · bots competitivos · cero fricción.**
 
-En `MatchConfig.cs`:
+Una feature que no fortalece esos pilares no entra por defecto.
 
-- `BoardWidth = 8`
-- `BoardHeight = 8`
-- `TickSeconds = 0.5f`
-- `MatchSeconds = 90f`
-- `TargetBankCrates = 3`
-- `TargetArrows = 3`
-- `BankThresholdForBots = 4`
+## Arquitectura
 
-Estos valores son configurables y todavía deben pasar por fase de calibración de feel.
+```text
+Assets/PogoDom/Core      reglas puras, sin UnityEngine
+Assets/PogoDom/Runtime   input y presentación Unity
+Assets/PogoDom/Editor    herramientas de escena
+Assets/PogoDom/Tests     tests compartidos
+headless/                compilación, tests y simulación .NET
+```
 
-## Principio de arquitectura
+La separación permite probar miles de partidas sin renderizar, entrenar/evaluar bots y conectar después el metajuego de ciudades sin contaminar las reglas de batalla.
 
-`Assets/PogoDom/Core` **no depende de UnityEngine**. Todo el gameplay importante vive allí.
+## Certificación sin Unity
 
-Unity queda en `Assets/PogoDom/Runtime` como presentación/input. Esto permite:
+Cada PR a `main` ejecuta `.github/workflows/headless-core.yml`:
 
-- tests rápidos;
-- replays reproducibles;
-- entrenamiento de bots;
-- reemplazar visuales sin tocar reglas;
-- conectar después el metajuego sin contaminar la partida.
+1. compila el Core con .NET 8;
+2. corre la suite NUnit;
+3. incluye stress multi-seed;
+4. ejecuta 250 partidas completas del laboratorio headless;
+5. falla ante estados inválidos o si desaparecen loops esenciales.
 
-## Origen técnico de las decisiones
+Unity sigue siendo un gate posterior para presentación, input real, rendimiento y game feel visual.
 
-Se tomó comportamiento observable/arquitectónico como referencia de proyectos auditados, pero **no se copiaron assets ni código propietario del Crash Bash original**. Ver `docs/PROVENANCE.md`.
+## Unity
+
+Cuando haya acceso:
+
+1. abrir/copiar el repo en un proyecto Unity 3D compatible;
+2. esperar compilación;
+3. ejecutar **PogoDom → Create M0 Prototype Scene**;
+4. abrir `Assets/PogoDom/Scenes/PogoDom_M0.unity`;
+5. Play + Test Runner.
+
+## Provenance
+
+PogoDom es una implementación propia basada en comportamiento y arquitectura auditados de repos con permiso. No incorpora modelos, personajes, música, texturas, animaciones ni binarios propietarios de Crash Bash. Ver [`docs/PROVENANCE.md`](docs/PROVENANCE.md).

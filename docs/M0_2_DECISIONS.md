@@ -23,7 +23,7 @@ Existe Easy para onboarding y queda reservada una entrada Hard para una policy e
 
 ## Match length
 
-M0.2 baja la hipótesis inicial de 90 s a **75 s**. No se considera definitiva. El headless lab medirá variantes antes de fijarla.
+M0.2 baja la hipótesis inicial de 90 s a **75 s**. No se considera definitiva.
 
 ## Missile stun
 
@@ -33,12 +33,25 @@ La implementación web de referencia usa 3 s de stun. PogoDom arranca con **2 s*
 
 Speed dura 16 ticks = 8 s con tick de 0,5 s. En vez de multiplicar una animación, otorga un **segundo aterrizaje real**: puede pintar, robar y recoger un ítem intermedio.
 
+## Escasez de power-ups
+
+Los items iniciales están disponibles desde el comienzo, pero una reposición consumida no vuelve instantáneamente. Cooldowns iniciales:
+
+- Bank: 3 s;
+- Arrow: 6 s;
+- Speed: 7 s;
+- Missile: 8 s.
+
+La razón es de producto: una caja tiene que crear una decisión y un hotspot, no convertirse en ruido constante.
+
 ## Headless certification
 
-Como Unity no está disponible en esta etapa, GitHub compila `Assets/PogoDom/Core` como .NET 8 y ejecuta:
+GitHub compila `Assets/PogoDom/Core` como .NET 8 y ejecuta:
 
 - tests unitarios;
 - 200 partidas de stress en NUnit;
 - 250 partidas completas del laboratorio headless en cada PR.
 
 El lab falla si detecta posiciones duplicadas, partidas que no terminan o si los loops esenciales (bank, speed, missile/stun, robo) dejan de ocurrir.
+
+La baseline medida está documentada en `docs/HEADLESS_BASELINE_M0_2.md`.

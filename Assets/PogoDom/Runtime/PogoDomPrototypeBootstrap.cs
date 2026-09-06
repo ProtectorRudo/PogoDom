@@ -23,6 +23,8 @@ namespace PogoDom.Runtime
         private MatchRunner _runner;
         private SwipeDirectionInput _input;
         private float _tickTimer;
+        private int _matchIndex;
+        private uint _activeSeed;
 
         private readonly Dictionary<GridPos, Renderer> _tileRenderers = new Dictionary<GridPos, Renderer>();
         private readonly Dictionary<int, Transform> _playerViews = new Dictionary<int, Transform>();
@@ -44,23 +46,55 @@ namespace PogoDom.Runtime
 
         private void Awake()
         {
-            _config = PlaytestMatchProfiles.Create(playtestMode);
-            _state = MatchFactory.CreateClassicPrototype(_config);
-            _runner = new MatchRunner(_config, new XorShiftRandom(seed));
-            _runner.Initialize(_state);
-
             _input = GetComponent<SwipeDirectionInput>();
             if (_input == null)
                 _input = gameObject.AddComponent<SwipeDirectionInput>();
 
-            BuildBoard();
-            BuildPlayers();
-            SyncItems();
-            SyncHazards();
-            PaintBoardVisuals();
+            _matchIndex = 0;
+            _activeSeed = PlaytestSeedSequence.SeedFor(seed, _matchIndex);
+            StartMatch(rebuildStaticViews: true);
 
             if (autoCreateCameraAndLight)
                 EnsureCameraAndLight();
+        }
+
+        private void StartMatch(bool rebuildStaticViews)
+        {
+            _config = PlaytestMatchProfiles.Create(playtestMode);
+            _state = MatchFactory.CreateClassicPrototype(_config);
+            _runner = new MatchRunner(_config, new XorShiftRandom(_activeSeed));
+            _runner.Initialize(_state);
+            _tickTimer = 0f;
+            _animationT = 1f;
+            _lastEvent = "READY";
+            _input.ResetDirection(Direction.Up);
+
+            DestroyAllViews(_itemViews);
+            DestroyAllViews(_hazardViews);
+
+            if (rebuildStaticViews)
+            {
+                BuildBoard();
+                BuildPlayers();
+            }
+            else
+            {
+                ResetPlayerViews();
+            }
+
+            SyncItems();
+            SyncHazards();
+            PaintBoardVisuals();
+        }
+
+        private void Rematch(bool sameSeed)
+        {
+            if (!sameSeed)
+            {
+                _matchIndex++;
+                _activeSeed = PlaytestSeedSequence.SeedFor(seed, _matchIndex);
+            }
+            StartMatch(rebuildStaticViews: false);
         }
 
         private void Update()
@@ -69,7 +103,7 @@ namespace PogoDom.Runtime
             AnimateItems();
             AnimateHazards();
 
-            if (_state.IsFinished)
+            if (_state == null || _state.IsFinished)
                 return;
 
             _tickTimer += Time.deltaTime;
@@ -88,8 +122,10 @@ namespace PogoDom.Runtime
             _animationT = 0f;
             foreach (var player in _state.Players)
             {
-                var from = result.FromPositions.TryGetValue(player.Id, out var a) ? a : player.Position;
-                var to = result.ToPositions.TryGetValue(player.Id, out var b) ? b : player.Position;
+                GridPos a;
+                GridPos b;
+                var from = result.FromPositions.TryGetValue(player.Id, out a) ? a : player.Position;
+                var to = result.ToPositions.TryGetValue(player.Id, out b) ? b : player.Position;
                 _animFrom[player.Id] = World(from, 0.65f);
                 _animTo[player.Id] = World(to, 0.65f);
             }
@@ -110,7 +146,7 @@ namespace PogoDom.Runtime
                 {
                     var pos = new GridPos(x, y);
                     var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    tile.name = $"Tile_{x}_{y}";
+                    tile.name = "Tile_" + x + "_" + y;
                     tile.transform.SetParent(transform, false);
                     tile.transform.position = World(pos, 0f);
                     tile.transform.localScale = new Vector3(0.94f, 0.14f, 0.94f);
@@ -137,6 +173,22 @@ namespace PogoDom.Runtime
             }
         }
 
+        private void ResetPlayerViews()
+        {
+            _animFrom.Clear();
+            _animTo.Clear();
+            foreach (var player in _state.Players)
+            {
+                Transform view;
+                if (!_playerViews.TryGetValue(player.Id, out view))
+                    continue;
+                var position = World(player.Position, 0.65f);
+                view.position = position;
+                _animFrom[player.Id] = position;
+                _animTo[player.Id] = position;
+            }
+        }
+
         private void SyncItems()
         {
             var alive = new HashSet<int>();
@@ -145,10 +197,11 @@ namespace PogoDom.Runtime
                 var item = _state.Items[i];
                 alive.Add(item.Id);
 
-                if (!_itemViews.TryGetValue(item.Id, out var view))
+                GameObject view;
+                if (!_itemViews.TryGetValue(item.Id, out view))
                 {
                     view = GameObject.CreatePrimitive(ItemPrimitive(item.Kind));
-                    view.name = $"{item.Kind}_{item.Id}";
+                    view.name = item.Kind + "_" + item.Id;
                     view.transform.SetParent(transform, false);
                     ApplyItemStyle(view, item.Kind);
                     _itemViews[item.Id] = view;
@@ -169,10 +222,11 @@ namespace PogoDom.Runtime
             {
                 var hazard = _state.Hazards[i];
                 alive.Add(hazard.Id);
-                if (!_hazardViews.TryGetValue(hazard.Id, out var view))
+                GameObject view;
+                if (!_hazardViews.TryGetValue(hazard.Id, out view))
                 {
                     view = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    view.name = $"Telegraph_{hazard.Kind}_{hazard.Id}";
+                    view.name = "Telegraph_" + hazard.Kind + "_" + hazard.Id;
                     view.transform.SetParent(transform, false);
                     view.GetComponent<Renderer>().material.color = new Color(1f, 0.12f, 0.05f);
                     _hazardViews[hazard.Id] = view;
@@ -184,21 +238,25 @@ namespace PogoDom.Runtime
 
         private void AnimateItems()
         {
+            if (_state == null) return;
             for (var i = 0; i < _state.Items.Count; i++)
             {
                 var item = _state.Items[i];
                 if (item.Kind != PowerUpKind.MysteryCrate) continue;
-                if (_itemViews.TryGetValue(item.Id, out var view))
+                GameObject view;
+                if (_itemViews.TryGetValue(item.Id, out view))
                     view.transform.Rotate(0f, 65f * Time.deltaTime, 0f, Space.World);
             }
         }
 
         private void AnimateHazards()
         {
+            if (_state == null) return;
             for (var i = 0; i < _state.Hazards.Count; i++)
             {
                 var hazard = _state.Hazards[i];
-                if (!_hazardViews.TryGetValue(hazard.Id, out var view)) continue;
+                GameObject view;
+                if (!_hazardViews.TryGetValue(hazard.Id, out view)) continue;
                 var width = (hazard.BlastRadius * 2 + 1) * tileSpacing * 0.92f;
                 var pulse = 1f + Mathf.Sin(Time.time * 10f) * 0.06f;
                 view.transform.localScale = new Vector3(width * pulse, 0.025f, width * pulse);
@@ -270,6 +328,13 @@ namespace PogoDom.Runtime
             }
         }
 
+        private static void DestroyAllViews(Dictionary<int, GameObject> views)
+        {
+            foreach (var pair in views)
+                if (pair.Value != null) UnityEngine.Object.Destroy(pair.Value);
+            views.Clear();
+        }
+
         private void PaintBoardVisuals()
         {
             foreach (var pair in _tileRenderers)
@@ -281,7 +346,7 @@ namespace PogoDom.Runtime
 
         private void AnimatePlayers()
         {
-            if (_playerViews.Count == 0) return;
+            if (_state == null || _playerViews.Count == 0) return;
 
             _animationT = Mathf.Clamp01(_animationT + Time.deltaTime / Mathf.Max(0.01f, _config.TickSeconds));
             var arc = Mathf.Sin(_animationT * Mathf.PI) * jumpHeight;
@@ -289,7 +354,9 @@ namespace PogoDom.Runtime
             foreach (var pair in _playerViews)
             {
                 var id = pair.Key;
-                if (!_animFrom.TryGetValue(id, out var from) || !_animTo.TryGetValue(id, out var to)) continue;
+                Vector3 from;
+                Vector3 to;
+                if (!_animFrom.TryGetValue(id, out from) || !_animTo.TryGetValue(id, out to)) continue;
                 var p = Vector3.Lerp(from, to, Smooth01(_animationT));
                 p.y += arc;
                 pair.Value.position = p;
@@ -303,7 +370,10 @@ namespace PogoDom.Runtime
             return new Vector3(originX + pos.X * tileSpacing, y, originZ + pos.Y * tileSpacing);
         }
 
-        private static float Smooth01(float t) => t * t * (3f - 2f * t);
+        private static float Smooth01(float t)
+        {
+            return t * t * (3f - 2f * t);
+        }
 
         private static float Yaw(Direction direction)
         {
@@ -379,16 +449,16 @@ namespace PogoDom.Runtime
         {
             switch (e.Type)
             {
-                case MatchEventType.Banked: return $"P{e.PlayerId + 1} BANK +{e.Value}";
-                case MatchEventType.CrateOpened: return $"P{e.PlayerId + 1} CRATE → {e.ItemKind}";
-                case MatchEventType.ArrowUsed: return $"P{e.PlayerId + 1} ARROW ({e.Value})";
-                case MatchEventType.SpeedActivated: return $"P{e.PlayerId + 1} SPEED";
-                case MatchEventType.MissileFired: return $"P{e.PlayerId + 1} MISSILE → P{e.SecondaryPlayerId + 1}";
-                case MatchEventType.PadlockActivated: return $"P{e.PlayerId + 1} SHIELD";
-                case MatchEventType.EnclosureCaptured: return $"P{e.PlayerId + 1} AREA +{e.Value}";
+                case MatchEventType.Banked: return "P" + (e.PlayerId + 1) + " BANK +" + e.Value;
+                case MatchEventType.CrateOpened: return "P" + (e.PlayerId + 1) + " CRATE -> " + e.ItemKind;
+                case MatchEventType.ArrowUsed: return "P" + (e.PlayerId + 1) + " ARROW (" + e.Value + ")";
+                case MatchEventType.SpeedActivated: return "P" + (e.PlayerId + 1) + " SPEED";
+                case MatchEventType.MissileFired: return "P" + (e.PlayerId + 1) + " MISSILE -> P" + (e.SecondaryPlayerId + 1);
+                case MatchEventType.PadlockActivated: return "P" + (e.PlayerId + 1) + " SHIELD";
+                case MatchEventType.EnclosureCaptured: return "P" + (e.PlayerId + 1) + " AREA +" + e.Value;
                 case MatchEventType.HazardTelegraphed: return "TNT WARNING";
-                case MatchEventType.HazardDetonated: return $"TNT BOOM -{e.Value} tiles";
-                case MatchEventType.TileProtected: return $"P{e.SecondaryPlayerId + 1} BLOCKED STEAL";
+                case MatchEventType.HazardDetonated: return "TNT BOOM -" + e.Value + " tiles";
+                case MatchEventType.TileProtected: return "P" + (e.SecondaryPlayerId + 1) + " BLOCKED STEAL";
                 case MatchEventType.MatchFinished: return "MATCH FINISHED";
                 default: return e.Type.ToString();
             }
@@ -396,17 +466,33 @@ namespace PogoDom.Runtime
 
         private void OnGUI()
         {
+            if (_state == null) return;
+
             var style = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
-            GUI.Box(new Rect(12, 12, 320, 220), "POGODOM — UNITY PLAYTEST");
-            GUI.Label(new Rect(28, 42, 285, 24), $"Mode: {playtestMode}", style);
-            GUI.Label(new Rect(28, 66, 285, 24), $"Time: {_state.RemainingSeconds:0.0}s", style);
+            GUI.Box(new Rect(12, 12, 340, _state.IsFinished ? 300 : 250), "POGODOM — UNITY PLAYTEST");
+            GUI.Label(new Rect(28, 42, 305, 24), "Mode: " + playtestMode, style);
+            GUI.Label(new Rect(28, 66, 305, 24), "Seed: " + _activeSeed + "  Match #" + (_matchIndex + 1), GUI.skin.label);
+            GUI.Label(new Rect(28, 88, 305, 24), "Time: " + _state.RemainingSeconds.ToString("0.0") + "s", style);
             for (var i = 0; i < _state.Players.Count; i++)
             {
                 var player = _state.Players[i];
-                GUI.Label(new Rect(28, 92 + i * 23, 285, 24), $"{player.Name}: {player.Score}", style);
+                GUI.Label(new Rect(28, 114 + i * 23, 305, 24), player.Name + ": " + player.Score, style);
             }
-            GUI.Label(new Rect(28, 184, 285, 22), _lastEvent, GUI.skin.label);
-            GUI.Label(new Rect(28, 204, 285, 22), "Swipe anywhere • auto-bounce", GUI.skin.label);
+            GUI.Label(new Rect(28, 206, 305, 22), _lastEvent, GUI.skin.label);
+            GUI.Label(new Rect(28, 226, 305, 22), "Swipe anywhere • auto-bounce", GUI.skin.label);
+
+            if (!_state.IsFinished) return;
+
+            var standings = MatchOutcome.Standings(_state);
+            var humanPlacement = 0;
+            for (var i = 0; i < standings.Count; i++)
+                if (standings[i].PlayerId == 0) humanPlacement = i + 1;
+            GUI.Label(new Rect(28, 248, 305, 22), "YOU: #" + humanPlacement + " / " + standings.Count, style);
+
+            if (GUI.Button(new Rect(28, 272, 145, 34), "REMATCH"))
+                Rematch(sameSeed: false);
+            if (GUI.Button(new Rect(183, 272, 153, 34), "REPLAY SAME SEED"))
+                Rematch(sameSeed: true);
         }
     }
 }

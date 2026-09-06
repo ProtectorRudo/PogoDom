@@ -26,6 +26,13 @@ namespace PogoDom.Runtime
             if (Application.isPlaying) RebuildGestureTracker();
         }
 
+        public void ResetDirection(Direction direction = Direction.Up)
+        {
+            CurrentDirection = direction;
+            if (_gesture == null) RebuildGestureTracker();
+            else _gesture.End();
+        }
+
         private void RebuildGestureTracker()
         {
             _gesture = new SwipeGestureTracker(Mathf.Max(1f, minimumSwipePixels));

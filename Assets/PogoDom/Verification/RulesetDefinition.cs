@@ -76,10 +76,10 @@ namespace PogoDom.Verification
         public static RulesetRegistry CreateCurrent()
         {
             var registry = new RulesetRegistry();
-            registry.Add(new RulesetDefinition("launch-m0-2", new MatchConfig()));
-            registry.Add(new RulesetDefinition("pogodom-loop-v1", new MatchConfig { EnableEnclosureCapture = true }));
-            registry.Add(new RulesetDefinition("pogodom-chaos-v1", new MatchConfig { EnableArenaChaos = true }));
-            registry.Add(new RulesetDefinition("pogodom-padlock-v1", new MatchConfig { EnablePadlockPower = true }));
+            registry.Add(new RulesetDefinition("launch-m0-2", RulesetPresets.LaunchM02()));
+            registry.Add(new RulesetDefinition("pogodom-loop-v1", RulesetPresets.LoopV1()));
+            registry.Add(new RulesetDefinition("pogodom-chaos-v1", RulesetPresets.ChaosV1()));
+            registry.Add(new RulesetDefinition("pogodom-padlock-v1", RulesetPresets.PadlockV1()));
             return registry;
         }
     }

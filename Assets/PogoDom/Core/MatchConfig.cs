@@ -2,6 +2,7 @@ namespace PogoDom.Core
 {
     public sealed class MatchConfig
     {
+        public RulesetBehaviorVersion BehaviorVersion { get; set; } = RulesetBehaviorVersion.V1;
         public int BoardWidth { get; set; } = 8;
         public int BoardHeight { get; set; } = 8;
         public float TickSeconds { get; set; } = 0.5f;
@@ -15,7 +16,6 @@ namespace PogoDom.Core
         public int ArrowRotationIntervalTicks { get; set; } = 2;
         public int BankThresholdForBots { get; set; } = 5;
 
-        // Experimental crate shell: powers are pre-rolled at spawn, hidden until pickup.
         public bool EnableMysteryCrates { get; set; } = false;
         public int TargetMysteryCrates { get; set; } = 2;
         public int MysteryCrateRespawnDelayTicks { get; set; } = 12;

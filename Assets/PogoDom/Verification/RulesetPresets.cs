@@ -57,8 +57,6 @@ namespace PogoDom.Verification
         public static MatchConfig CratesV1()
         {
             var config = BaseM02();
-            // Preserve bank crates as the score-conversion hotspot, but replace
-            // loose combat pickups with a smaller number of mystery power crates.
             config.TargetArrows = 0;
             config.TargetSpeedPickups = 0;
             config.TargetMissiles = 0;
@@ -75,6 +73,7 @@ namespace PogoDom.Verification
         {
             return new MatchConfig
             {
+                BehaviorVersion = RulesetBehaviorVersion.V1,
                 BoardWidth = 8,
                 BoardHeight = 8,
                 TickSeconds = 0.5f,

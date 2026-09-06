@@ -10,24 +10,55 @@ namespace PogoDom.Core
             var item = state.ItemAt(player.Position);
             if (item == null) return false;
 
-            switch (item.Kind)
+            var effectivePower = item.Kind;
+            if (item.IsMysteryCrate)
+            {
+                effectivePower = item.ContainedPower;
+                if (!MysteryCrateTable.IsValidPayload(effectivePower))
+                    throw new InvalidOperationException("Mystery crate contains an invalid payload.");
+
+                // Presentation can reveal the payload only at the instant the crate opens.
+                events.Add(new MatchEvent(
+                    MatchEventType.CrateOpened,
+                    player.Id,
+                    player.Position,
+                    0,
+                    effectivePower));
+            }
+
+            ApplyPower(state, player, config, events, effectivePower, item.ArrowDirection);
+
+            state.Items.Remove(item);
+            events.Add(new MatchEvent(MatchEventType.ItemConsumed, player.Id, player.Position, 0, item.Kind));
+            return true;
+        }
+
+        private static void ApplyPower(
+            MatchState state,
+            PlayerState player,
+            MatchConfig config,
+            List<MatchEvent> events,
+            PowerUpKind power,
+            Direction arrowDirection)
+        {
+            switch (power)
             {
                 case PowerUpKind.BankCrate:
                 {
                     var banked = BankingResolver.Bank(state, player);
-                    events.Add(new MatchEvent(MatchEventType.Banked, player.Id, player.Position, banked, item.Kind));
+                    events.Add(new MatchEvent(MatchEventType.Banked, player.Id, player.Position, banked, power));
                     break;
                 }
                 case PowerUpKind.Arrow:
                 {
-                    var changed = ArrowResolver.Apply(state, player, item.ArrowDirection);
-                    events.Add(new MatchEvent(MatchEventType.ArrowUsed, player.Id, player.Position, changed, item.Kind));
+                    var changed = ArrowResolver.Apply(state, player, arrowDirection);
+                    events.Add(new MatchEvent(MatchEventType.ArrowUsed, player.Id, player.Position, changed, power));
                     break;
                 }
                 case PowerUpKind.Speed:
                 {
                     player.SpeedTicksRemaining = Math.Max(player.SpeedTicksRemaining, config.SpeedDurationTicks);
-                    events.Add(new MatchEvent(MatchEventType.SpeedActivated, player.Id, player.Position, config.SpeedDurationTicks, item.Kind));
+                    events.Add(new MatchEvent(MatchEventType.SpeedActivated, player.Id, player.Position, config.SpeedDurationTicks, power));
                     break;
                 }
                 case PowerUpKind.Missile:
@@ -36,22 +67,20 @@ namespace PogoDom.Core
                     if (target != null)
                     {
                         target.StunTicksRemaining = Math.Max(target.StunTicksRemaining, config.MissileStunTicks);
-                        events.Add(new MatchEvent(MatchEventType.MissileFired, player.Id, player.Position, config.MissileStunTicks, item.Kind, target.Id));
-                        events.Add(new MatchEvent(MatchEventType.PlayerStunned, target.Id, target.Position, config.MissileStunTicks, item.Kind, player.Id));
+                        events.Add(new MatchEvent(MatchEventType.MissileFired, player.Id, player.Position, config.MissileStunTicks, power, target.Id));
+                        events.Add(new MatchEvent(MatchEventType.PlayerStunned, target.Id, target.Position, config.MissileStunTicks, power, player.Id));
                     }
                     break;
                 }
                 case PowerUpKind.Padlock:
                 {
                     player.PadlockTicksRemaining = Math.Max(player.PadlockTicksRemaining, config.PadlockDurationTicks);
-                    events.Add(new MatchEvent(MatchEventType.PadlockActivated, player.Id, player.Position, config.PadlockDurationTicks, item.Kind));
+                    events.Add(new MatchEvent(MatchEventType.PadlockActivated, player.Id, player.Position, config.PadlockDurationTicks, power));
                     break;
                 }
+                default:
+                    throw new InvalidOperationException("Unsupported pickup power: " + power);
             }
-
-            state.Items.Remove(item);
-            events.Add(new MatchEvent(MatchEventType.ItemConsumed, player.Id, player.Position, 0, item.Kind));
-            return true;
         }
 
         public static PlayerState SelectMissileTarget(MatchState state, PlayerState attacker)

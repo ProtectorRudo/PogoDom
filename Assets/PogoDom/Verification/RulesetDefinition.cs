@@ -18,6 +18,10 @@ namespace PogoDom.Verification
         public int MinimumBankCrateChebyshevDistance { get; }
         public int ArrowRotationIntervalTicks { get; }
         public int BankThresholdForBots { get; }
+        public bool EnableMysteryCrates { get; }
+        public int TargetMysteryCrates { get; }
+        public int MysteryCrateRespawnDelayTicks { get; }
+        public MysteryCrateTableId MysteryCrateTableId { get; }
         public bool EnableEnclosureCapture { get; }
         public EnclosureCapturePolicy EnclosureCapturePolicy { get; }
         public bool EnableArenaChaos { get; }
@@ -45,6 +49,7 @@ namespace PogoDom.Verification
             BoardWidth = config.BoardWidth; BoardHeight = config.BoardHeight; TickSeconds = config.TickSeconds; MatchSeconds = config.MatchSeconds;
             TargetBankCrates = config.TargetBankCrates; TargetArrows = config.TargetArrows; TargetSpeedPickups = config.TargetSpeedPickups; TargetMissiles = config.TargetMissiles;
             MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance; ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks; BankThresholdForBots = config.BankThresholdForBots;
+            EnableMysteryCrates = config.EnableMysteryCrates; TargetMysteryCrates = config.TargetMysteryCrates; MysteryCrateRespawnDelayTicks = config.MysteryCrateRespawnDelayTicks; MysteryCrateTableId = config.MysteryCrateTableId;
             EnableEnclosureCapture = config.EnableEnclosureCapture; EnclosureCapturePolicy = config.EnclosureCapturePolicy;
             EnableArenaChaos = config.EnableArenaChaos; TntInitialDelayTicks = config.TntInitialDelayTicks; TntSpawnIntervalTicks = config.TntSpawnIntervalTicks; TntFuseTicks = config.TntFuseTicks; TntBlastRadius = config.TntBlastRadius; TntStunTicks = config.TntStunTicks; MaxActiveTnt = config.MaxActiveTnt;
             EnablePadlockPower = config.EnablePadlockPower; TargetPadlocks = config.TargetPadlocks; PadlockDurationTicks = config.PadlockDurationTicks; PadlockRespawnDelayTicks = config.PadlockRespawnDelayTicks;
@@ -59,6 +64,7 @@ namespace PogoDom.Verification
                 BoardWidth = BoardWidth, BoardHeight = BoardHeight, TickSeconds = TickSeconds, MatchSeconds = MatchSeconds,
                 TargetBankCrates = TargetBankCrates, TargetArrows = TargetArrows, TargetSpeedPickups = TargetSpeedPickups, TargetMissiles = TargetMissiles,
                 MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance, ArrowRotationIntervalTicks = ArrowRotationIntervalTicks, BankThresholdForBots = BankThresholdForBots,
+                EnableMysteryCrates = EnableMysteryCrates, TargetMysteryCrates = TargetMysteryCrates, MysteryCrateRespawnDelayTicks = MysteryCrateRespawnDelayTicks, MysteryCrateTableId = MysteryCrateTableId,
                 EnableEnclosureCapture = EnableEnclosureCapture, EnclosureCapturePolicy = EnclosureCapturePolicy,
                 EnableArenaChaos = EnableArenaChaos, TntInitialDelayTicks = TntInitialDelayTicks, TntSpawnIntervalTicks = TntSpawnIntervalTicks, TntFuseTicks = TntFuseTicks, TntBlastRadius = TntBlastRadius, TntStunTicks = TntStunTicks, MaxActiveTnt = MaxActiveTnt,
                 EnablePadlockPower = EnablePadlockPower, TargetPadlocks = TargetPadlocks, PadlockDurationTicks = PadlockDurationTicks, PadlockRespawnDelayTicks = PadlockRespawnDelayTicks,
@@ -84,6 +90,7 @@ namespace PogoDom.Verification
             registry.Add(new RulesetDefinition("pogodom-chaos-v2", RulesetPresets.ChaosV2()));
             registry.Add(new RulesetDefinition("pogodom-padlock-v1", RulesetPresets.PadlockV1()));
             registry.Add(new RulesetDefinition("pogodom-padlock-v2", RulesetPresets.PadlockV2()));
+            registry.Add(new RulesetDefinition("pogodom-crates-v1", RulesetPresets.CratesV1()));
             return registry;
         }
     }

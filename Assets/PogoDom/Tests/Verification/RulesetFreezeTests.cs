@@ -36,6 +36,7 @@ namespace PogoDom.Tests.Verification
             Assert.AreEqual(16, config.SpeedDurationTicks);
             Assert.AreEqual(4, config.MissileStunTicks);
             Assert.AreEqual(EnclosureCapturePolicy.AllUnprotected, config.EnclosureCapturePolicy);
+            Assert.IsFalse(config.EnableMysteryCrates);
             Assert.IsFalse(config.EnableEnclosureCapture);
             Assert.IsFalse(config.EnableArenaChaos);
             Assert.IsFalse(config.EnablePadlockPower);
@@ -58,6 +59,20 @@ namespace PogoDom.Tests.Verification
             Assert.AreEqual(30, RulesetPresets.ChaosV2().TntSpawnIntervalTicks);
             Assert.AreEqual(10, RulesetPresets.PadlockV2().PadlockDurationTicks);
             Assert.AreEqual(24, RulesetPresets.PadlockV2().PadlockRespawnDelayTicks);
+        }
+
+        [Test]
+        public void CratesV1ReplacesLooseCombatPickupsWithoutChangingBankLoop()
+        {
+            var config = RulesetRegistry.CreateCurrent().Get("pogodom-crates-v1").CreateConfig();
+            Assert.IsTrue(config.EnableMysteryCrates);
+            Assert.AreEqual(2, config.TargetMysteryCrates);
+            Assert.AreEqual(MysteryCrateTableId.PowerMixV1, config.MysteryCrateTableId);
+            Assert.AreEqual(3, config.TargetBankCrates);
+            Assert.AreEqual(0, config.TargetArrows);
+            Assert.AreEqual(0, config.TargetSpeedPickups);
+            Assert.AreEqual(0, config.TargetMissiles);
+            Assert.AreEqual(0, config.TargetPadlocks);
         }
 
         private static void AssertOnlyToggleDiffers(MatchConfig baseline, MatchConfig candidate, string expectedProperty)

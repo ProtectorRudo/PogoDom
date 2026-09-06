@@ -119,6 +119,7 @@ namespace PogoDom.Core
             switch (kind)
             {
                 case PowerUpKind.BankCrate: return owned >= config.BankThresholdForBots ? 8f + owned * 1.8f : -1.5f;
+                case PowerUpKind.MysteryCrate: return 10.5f; // bots do not peek at hidden payload
                 case PowerUpKind.Missile: return 12f;
                 case PowerUpKind.Arrow: return 9.5f;
                 case PowerUpKind.Speed: return 8f;

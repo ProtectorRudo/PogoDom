@@ -10,6 +10,7 @@ namespace PogoDom.Core
         FourWayMissile = 5,
         ElectroStun = 6,
         Padlock = 7,
-        Tnt = 8
+        Tnt = 8,
+        MysteryCrate = 9
     }
 }

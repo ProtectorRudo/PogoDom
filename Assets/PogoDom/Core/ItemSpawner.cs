@@ -19,6 +19,8 @@ namespace PogoDom.Core
                 FillImmediately(state, PowerUpKind.Missile, config.TargetMissiles, config, random, events);
                 if (config.EnablePadlockPower)
                     FillImmediately(state, PowerUpKind.Padlock, config.TargetPadlocks, config, random, events);
+                if (config.EnableMysteryCrates)
+                    FillImmediately(state, PowerUpKind.MysteryCrate, config.TargetMysteryCrates, config, random, events);
                 _primed = true;
                 return;
             }
@@ -29,6 +31,8 @@ namespace PogoDom.Core
             ReplenishWithDelay(state, PowerUpKind.Missile, config.TargetMissiles, config.MissileRespawnDelayTicks, config, random, events);
             if (config.EnablePadlockPower)
                 ReplenishWithDelay(state, PowerUpKind.Padlock, config.TargetPadlocks, config.PadlockRespawnDelayTicks, config, random, events);
+            if (config.EnableMysteryCrates)
+                ReplenishWithDelay(state, PowerUpKind.MysteryCrate, config.TargetMysteryCrates, config.MysteryCrateRespawnDelayTicks, config, random, events);
         }
 
         private void FillImmediately(MatchState state, PowerUpKind kind, int target, MatchConfig config, IRandomSource random, List<MatchEvent> events)
@@ -76,8 +80,14 @@ namespace PogoDom.Core
             GridPos pos;
             if (!TryFindSpawnPosition(state, kind, config, random, out pos)) return false;
 
+            // Direction is also rolled at spawn so an Arrow hidden inside a crate is
+            // fully deterministic before anybody reaches it.
             var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
-            var item = new ItemState(_nextItemId++, kind, pos, arrowDirection);
+            var containedPower = kind == PowerUpKind.MysteryCrate
+                ? MysteryCrateTable.Roll(config.MysteryCrateTableId, random)
+                : PowerUpKind.None;
+
+            var item = new ItemState(_nextItemId++, kind, pos, arrowDirection, containedPower);
             state.Items.Add(item);
             if (events != null)
                 events.Add(new MatchEvent(MatchEventType.ItemSpawned, position: pos, itemKind: kind));

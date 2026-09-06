@@ -250,7 +250,6 @@ namespace PogoDom.Runtime
             _strength = Mathf.Clamp01(cue.PulseStrength);
             _color = color;
             _ring.enabled = true;
-            transform.localScale = Vector3.one;
             ApplyColor(1f);
         }
 

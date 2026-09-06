@@ -20,9 +20,13 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Restore
+      - name: Restore tests
         run: dotnet restore headless/PogoDom.Core.Tests.csproj
-      - name: Build
+      - name: Build tests
         run: dotnet build headless/PogoDom.Core.Tests.csproj --configuration Release --no-restore
-      - name: Test
+      - name: Test core
         run: dotnet test headless/PogoDom.Core.Tests.csproj --configuration Release --no-build --verbosity normal
+      - name: Restore simulation lab
+        run: dotnet restore headless/PogoDom.Sim.csproj
+      - name: Run 250 headless matches
+        run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 250 --seed 20260905 --assert

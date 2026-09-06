@@ -12,7 +12,7 @@ permissions:
 jobs:
   certify-headless:
     runs-on: ubuntu-latest
-    timeout-minutes: 26
+    timeout-minutes: 28
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,3 +61,5 @@ jobs:
             echo "===== $variant ====="
             dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 100 --seed 20260905 --variant "$variant" --assert
           done
+      - name: Certify hard bot local lookahead
+        run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --difficulty-lab --matches 200 --seed 20260905 --assert

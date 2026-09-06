@@ -11,7 +11,8 @@ namespace PogoDom.Session
         LateLeadChange = 2,
         PhotoFinish = 3,
         ComebackWin = 4,
-        AreaCapture = 5
+        AreaCapture = 5,
+        ArenaBlast = 6
     }
 
     public sealed class HighlightMoment
@@ -55,6 +56,10 @@ namespace PogoDom.Session
             for (var i = 0; i < tick.Events.Count; i++)
             {
                 var e = tick.Events[i];
+
+                if (e.Type == MatchEventType.HazardDetonated && e.Value >= 5)
+                    AddOnce(HighlightKind.ArenaBlast, -1, e.Value, Math.Min(100, 65 + e.Value * 4));
+
                 if (e.PlayerId != _localPlayerId) continue;
 
                 if (e.Type == MatchEventType.Banked && e.Value >= 8)

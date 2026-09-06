@@ -12,6 +12,8 @@ namespace PogoDom.Core
         SpeedActivated,
         MissileFired,
         PlayerStunned,
+        HazardTelegraphed,
+        HazardDetonated,
         ItemSpawned,
         ItemConsumed,
         MatchFinished

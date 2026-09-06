@@ -80,7 +80,7 @@ namespace PogoDom.Runtime
             if (_initialized) return;
             _identity = PickupVisualIdentityPolicy.Get(kind);
             _initialized = true;
-            _phase = ((name.GetHashCode() & 1023) / 1023f) * Mathf.PI * 2f;
+            _phase = StablePhase(name);
 
             var root = new GameObject("PickupIdentity");
             root.transform.SetParent(transform, false);
@@ -112,7 +112,6 @@ namespace PogoDom.Runtime
         private void BuildIdentity(PowerUpKind kind)
         {
             var accent = AccentFor(kind);
-            var dark = new Color(0.07f, 0.08f, 0.12f);
             var light = PogoVisualMaterialFactory.Lighten(accent, 0.34f);
 
             switch (_identity.Archetype)
@@ -186,6 +185,16 @@ namespace PogoDom.Runtime
                 case PowerUpKind.Missile: return new Color(1.00f, 0.15f, 0.10f);
                 case PowerUpKind.Padlock: return new Color(0.18f, 0.86f, 1.00f);
                 default: return Color.white;
+            }
+        }
+
+        private static float StablePhase(string value)
+        {
+            unchecked
+            {
+                var hash = 17;
+                for (var i = 0; i < value.Length; i++) hash = hash * 31 + value[i];
+                return ((hash & 1023) / 1023f) * Mathf.PI * 2f;
             }
         }
 

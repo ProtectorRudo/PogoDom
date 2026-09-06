@@ -15,11 +15,17 @@ namespace PogoDom.Core
         public int ArrowRotationIntervalTicks { get; set; } = 2;
         public int BankThresholdForBots { get; set; } = 5;
 
-        // 8 seconds at 0.5 s/tick. Speed grants one extra bounce per tick.
+        // Initial items are present immediately. Replacement items have deliberate
+        // scarcity so a pickup creates a hotspot instead of constant visual noise.
+        public int BankRespawnDelayTicks { get; set; } = 6;      // 3 s
+        public int ArrowRespawnDelayTicks { get; set; } = 12;    // 6 s
+        public int SpeedRespawnDelayTicks { get; set; } = 14;    // 7 s
+        public int MissileRespawnDelayTicks { get; set; } = 16;  // 8 s
+
+        // 8 seconds at 0.5 s/tick. Speed grants one extra real bounce per tick.
         public int SpeedDurationTicks { get; set; } = 16;
 
-        // Start deliberately below the 3 s prototype reference to reduce frustration.
-        // This is a tuning hypothesis, not a locked product value.
+        // Deliberately below the 3 s prototype reference to reduce frustration.
         public int MissileStunTicks { get; set; } = 4;
     }
 }

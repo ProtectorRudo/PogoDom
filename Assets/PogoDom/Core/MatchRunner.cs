@@ -35,7 +35,6 @@ namespace PogoDom.Core
 
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
 
-            // Landing effects from the previous bounce happen before repainting the square.
             for (var i = 0; i < state.Players.Count; i++)
                 PowerUpResolver.ApplyItemUnderPlayer(state, state.Players[i], _config, result.Events);
 
@@ -44,8 +43,6 @@ namespace PogoDom.Core
             var desired = ResolveDirections(state, externalDirections);
             RunMovementPhase(state, desired, result, 1);
 
-            // Speed is deliberately implemented as a second real landing, not a visual multiplier.
-            // This means an accelerated player can paint/steal and collect an item at the intermediate square.
             var speedPlayers = new List<PlayerState>();
             for (var i = 0; i < state.Players.Count; i++)
             {
@@ -132,6 +129,11 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
+                Direction intent;
+                var hasIntent = directions.TryGetValue(player.Id, out intent) && intent != Direction.None;
+                if (!hasIntent)
+                    continue;
+
                 var from = player.Position;
                 var to = resolved[player.Id];
 
@@ -147,6 +149,17 @@ namespace PogoDom.Core
                     player.Id,
                     to,
                     phase));
+            }
+
+            // Stationary players are still part of collision resolution but do not
+            // produce fake "blocked" events. This keeps telemetry about friction honest.
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                var player = state.Players[i];
+                if (!result.ToPositions.ContainsKey(player.Id))
+                    result.ToPositions[player.Id] = player.Position;
+                if (!result.FromPositions.ContainsKey(player.Id))
+                    result.FromPositions[player.Id] = player.Position;
             }
         }
 

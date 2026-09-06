@@ -1,7 +1,7 @@
 {
   "name": "PogoDom.Runtime",
   "rootNamespace": "PogoDom.Runtime",
-  "references": ["PogoDom.Core"],
+  "references": ["PogoDom.Core", "PogoDom.Cosmetics"],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

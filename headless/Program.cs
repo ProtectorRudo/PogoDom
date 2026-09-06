@@ -42,12 +42,7 @@ internal static class Program
         for (var m = 0; m < matches; m++)
         {
             var config = CreateConfig(variant);
-            if (config == null)
-            {
-                Console.Error.WriteLine("Unknown variant: " + variant);
-                return 3;
-            }
-
+            if (config == null) return Fail("unknown variant: " + variant);
             var state = MatchFactory.CreateBotLab(config);
             var random = new XorShiftRandom(seed + (uint)(m * 7919));
             var runner = new MatchRunner(config, random);
@@ -59,7 +54,6 @@ internal static class Program
             {
                 var result = runner.Tick(state);
                 aggregate.Ticks++;
-
                 for (var e = 0; e < result.Events.Count; e++)
                 {
                     var ev = result.Events[e];
@@ -69,10 +63,7 @@ internal static class Program
                         case MatchEventType.PlayerBlocked: aggregate.Blocked++; break;
                         case MatchEventType.TileStolen: aggregate.Steals++; break;
                         case MatchEventType.TileProtected: aggregate.ProtectedPaints++; break;
-                        case MatchEventType.EnclosureCaptured:
-                            aggregate.Enclosures++;
-                            aggregate.EnclosedTiles += ev.Value;
-                            break;
+                        case MatchEventType.EnclosureCaptured: aggregate.Enclosures++; aggregate.EnclosedTiles += ev.Value; break;
                         case MatchEventType.Banked: aggregate.Banks++; break;
                         case MatchEventType.ArrowUsed: aggregate.Arrows++; break;
                         case MatchEventType.SpeedActivated: aggregate.Speeds++; break;
@@ -80,28 +71,17 @@ internal static class Program
                         case MatchEventType.PadlockActivated: aggregate.Padlocks++; break;
                         case MatchEventType.PlayerStunned: aggregate.Stuns++; break;
                         case MatchEventType.HazardTelegraphed: aggregate.HazardWarnings++; break;
-                        case MatchEventType.HazardDetonated:
-                            aggregate.HazardBlasts++;
-                            aggregate.HazardTilesDestroyed += ev.Value;
-                            break;
+                        case MatchEventType.HazardDetonated: aggregate.HazardBlasts++; aggregate.HazardTilesDestroyed += ev.Value; break;
                     }
                 }
 
                 var leader = MatchOutcome.Leader(state);
-                if (previousLeader != null && leader != null && previousLeader.Id != leader.Id)
-                    aggregate.LeadChanges++;
+                if (previousLeader != null && leader != null && previousLeader.Id != leader.Id) aggregate.LeadChanges++;
                 previousLeader = leader;
-
-                if (!StateValid(state))
-                {
-                    aggregate.InvalidStates++;
-                    break;
-                }
+                if (!StateValid(state)) { aggregate.InvalidStates++; break; }
             }
 
-            if (safety >= 10000 || !state.IsFinished)
-                aggregate.InvalidStates++;
-
+            if (safety >= 10000 || !state.IsFinished) aggregate.InvalidStates++;
             var standings = MatchOutcome.Standings(state);
             if (standings.Count >= 2)
             {
@@ -114,31 +94,22 @@ internal static class Program
         }
 
         Print(aggregate);
-        if (!strict) return 0;
-        return AssertHealthy(aggregate);
+        return strict ? AssertHealthy(aggregate) : 0;
     }
 
     private static MatchConfig CreateConfig(string variant)
     {
         switch (variant)
         {
-            case "launch":
-                return new MatchConfig();
-            case "loop":
-                return new MatchConfig { EnableEnclosureCapture = true };
-            case "chaos":
-                return new MatchConfig { EnableArenaChaos = true };
-            case "padlock":
-                return new MatchConfig { EnablePadlockPower = true };
-            case "fusion":
-                return new MatchConfig
-                {
-                    EnableEnclosureCapture = true,
-                    EnableArenaChaos = true,
-                    EnablePadlockPower = true
-                };
-            default:
-                return null;
+            case "launch": return new MatchConfig();
+            case "loop": return new MatchConfig { EnableEnclosureCapture = true };
+            case "loop2": return new MatchConfig { EnableEnclosureCapture = true, EnclosureCapturePolicy = EnclosureCapturePolicy.NeutralOnly };
+            case "chaos": return new MatchConfig { EnableArenaChaos = true };
+            case "chaos2": return new MatchConfig { EnableArenaChaos = true, TntInitialDelayTicks = 20, TntSpawnIntervalTicks = 30 };
+            case "padlock": return new MatchConfig { EnablePadlockPower = true };
+            case "padlock2": return new MatchConfig { EnablePadlockPower = true, PadlockDurationTicks = 10, PadlockRespawnDelayTicks = 24 };
+            case "fusion": return new MatchConfig { EnableEnclosureCapture = true, EnableArenaChaos = true, EnablePadlockPower = true };
+            default: return null;
         }
     }
 
@@ -151,21 +122,13 @@ internal static class Program
         if (a.Missiles == 0 || a.Stuns == 0) return Fail("missile/stun loop never occurred");
         if (a.Steals == 0) return Fail("no tile stealing occurred");
         if (blockedRatio >= 0.55) return Fail("more than 55% of movement phases are blocked");
-
-        if ((a.Variant == "loop" || a.Variant == "fusion") && a.Enclosures == 0)
-            return Fail("loop variant never produced an enclosure");
-        if ((a.Variant == "chaos" || a.Variant == "fusion") && a.HazardBlasts == 0)
-            return Fail("chaos variant never detonated a telegraphed hazard");
-        if ((a.Variant == "padlock" || a.Variant == "fusion") && a.Padlocks == 0)
-            return Fail("padlock variant never activated a shield");
+        if ((a.Variant == "loop" || a.Variant == "loop2" || a.Variant == "fusion") && a.Enclosures == 0) return Fail("loop variant never produced an enclosure");
+        if ((a.Variant == "chaos" || a.Variant == "chaos2" || a.Variant == "fusion") && a.HazardBlasts == 0) return Fail("chaos variant never detonated a hazard");
+        if ((a.Variant == "padlock" || a.Variant == "padlock2" || a.Variant == "fusion") && a.Padlocks == 0) return Fail("padlock variant never activated a shield");
         return 0;
     }
 
-    private static int Fail(string reason)
-    {
-        Console.Error.WriteLine("SIM ASSERTION FAILED: " + reason);
-        return 2;
-    }
+    private static int Fail(string reason) { Console.Error.WriteLine("SIM ASSERTION FAILED: " + reason); return 2; }
 
     private static void Print(Aggregate a)
     {
@@ -193,21 +156,14 @@ internal static class Program
         Console.WriteLine("protected_paints_per_match=" + PerMatch(a.ProtectedPaints, a.Matches));
     }
 
-    private static string PerMatch(long value, int matches)
-    {
-        return (matches == 0 ? 0 : value / (double)matches).ToString("0.00");
-    }
+    private static string PerMatch(long value, int matches) => (matches == 0 ? 0 : value / (double)matches).ToString("0.00");
 
     private static bool StateValid(MatchState state)
     {
         var players = new HashSet<GridPos>();
-        for (var i = 0; i < state.Players.Count; i++)
-            if (!players.Add(state.Players[i].Position)) return false;
-
+        for (var i = 0; i < state.Players.Count; i++) if (!players.Add(state.Players[i].Position)) return false;
         var items = new HashSet<GridPos>();
-        for (var i = 0; i < state.Items.Count; i++)
-            if (!items.Add(state.Items[i].Position)) return false;
-
+        for (var i = 0; i < state.Items.Count; i++) if (!items.Add(state.Items[i].Position)) return false;
         var hazards = new HashSet<GridPos>();
         for (var i = 0; i < state.Hazards.Count; i++)
         {
@@ -217,26 +173,7 @@ internal static class Program
         return true;
     }
 
-    private static bool HasArg(string[] args, string key)
-    {
-        for (var i = 0; i < args.Length; i++) if (args[i] == key) return true;
-        return false;
-    }
-
-    private static int ReadInt(string[] args, string key, int fallback)
-    {
-        for (var i = 0; i + 1 < args.Length; i++)
-            if (args[i] == key)
-            {
-                int value;
-                if (int.TryParse(args[i + 1], out value)) return value;
-            }
-        return fallback;
-    }
-
-    private static string ReadString(string[] args, string key, string fallback)
-    {
-        for (var i = 0; i + 1 < args.Length; i++) if (args[i] == key) return args[i + 1];
-        return fallback;
-    }
+    private static bool HasArg(string[] args, string key) { for (var i = 0; i < args.Length; i++) if (args[i] == key) return true; return false; }
+    private static int ReadInt(string[] args, string key, int fallback) { for (var i = 0; i + 1 < args.Length; i++) if (args[i] == key) { int value; if (int.TryParse(args[i + 1], out value)) return value; } return fallback; }
+    private static string ReadString(string[] args, string key, string fallback) { for (var i = 0; i + 1 < args.Length; i++) if (args[i] == key) return args[i + 1]; return fallback; }
 }

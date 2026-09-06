@@ -2,19 +2,23 @@ using PogoDom.Core;
 
 namespace PogoDom.Verification
 {
-    // Versioned presets are intentionally explicit. Never build an old ruleset from
-    // `new MatchConfig()` defaults: changing a future default must not rewrite history.
     public static class RulesetPresets
     {
-        public static MatchConfig LaunchM02()
-        {
-            return BaseM02();
-        }
+        public static MatchConfig LaunchM02() => BaseM02();
 
         public static MatchConfig LoopV1()
         {
             var config = BaseM02();
             config.EnableEnclosureCapture = true;
+            config.EnclosureCapturePolicy = EnclosureCapturePolicy.AllUnprotected;
+            return config;
+        }
+
+        public static MatchConfig LoopV2()
+        {
+            var config = BaseM02();
+            config.EnableEnclosureCapture = true;
+            config.EnclosureCapturePolicy = EnclosureCapturePolicy.NeutralOnly;
             return config;
         }
 
@@ -25,10 +29,28 @@ namespace PogoDom.Verification
             return config;
         }
 
+        public static MatchConfig ChaosV2()
+        {
+            var config = BaseM02();
+            config.EnableArenaChaos = true;
+            config.TntInitialDelayTicks = 20;      // first warning at 10 s
+            config.TntSpawnIntervalTicks = 30;    // at most every 15 s
+            return config;
+        }
+
         public static MatchConfig PadlockV1()
         {
             var config = BaseM02();
             config.EnablePadlockPower = true;
+            return config;
+        }
+
+        public static MatchConfig PadlockV2()
+        {
+            var config = BaseM02();
+            config.EnablePadlockPower = true;
+            config.PadlockDurationTicks = 10;      // 5 s instead of 8 s
+            config.PadlockRespawnDelayTicks = 24; // 12 s instead of 9 s
             return config;
         }
 
@@ -48,6 +70,7 @@ namespace PogoDom.Verification
                 ArrowRotationIntervalTicks = 2,
                 BankThresholdForBots = 5,
                 EnableEnclosureCapture = false,
+                EnclosureCapturePolicy = EnclosureCapturePolicy.AllUnprotected,
                 EnableArenaChaos = false,
                 TntInitialDelayTicks = 12,
                 TntSpawnIntervalTicks = 16,

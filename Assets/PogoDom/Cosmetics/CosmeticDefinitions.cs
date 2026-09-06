@@ -21,18 +21,33 @@ namespace PogoDom.Cosmetics
         public CosmeticRarity Rarity { get; }
         public string AssetKey { get; }
         public string RigFamily { get; }
+        public AvatarRigCapability Capabilities { get; }
         public CosmeticId DefaultPogoId { get; }
         public IReadOnlyList<CosmeticId> SignatureSkillVisualIds { get; }
 
-        public CharacterDefinition(CosmeticId id, string displayName, CosmeticRarity rarity, string assetKey, string rigFamily, CosmeticId defaultPogoId, IReadOnlyList<CosmeticId> signatureSkillVisualIds = null)
+        public CharacterDefinition(
+            CosmeticId id,
+            string displayName,
+            CosmeticRarity rarity,
+            string assetKey,
+            string rigFamily,
+            CosmeticId defaultPogoId,
+            IReadOnlyList<CosmeticId> signatureSkillVisualIds = null,
+            AvatarRigCapability capabilities = AvatarRigCapabilities.StandardHumanoid)
         {
             Id = id;
             DisplayName = Required(displayName, nameof(displayName));
             AssetKey = Required(assetKey, nameof(assetKey));
             RigFamily = Required(rigFamily, nameof(rigFamily)).ToLowerInvariant();
             Rarity = rarity;
+            Capabilities = capabilities;
             DefaultPogoId = defaultPogoId;
             SignatureSkillVisualIds = signatureSkillVisualIds ?? Array.Empty<CosmeticId>();
+        }
+
+        public bool Supports(AvatarRigCapability required)
+        {
+            return AvatarRigCapabilities.Supports(Capabilities, required);
         }
 
         private static string Required(string value, string name)
@@ -75,8 +90,15 @@ namespace PogoDom.Cosmetics
         public CosmeticKind Kind { get; }
         public CosmeticRarity Rarity { get; }
         public string AssetKey { get; }
+        public AvatarRigCapability RequiredCapabilities { get; }
 
-        public SimpleCosmeticDefinition(CosmeticId id, string displayName, CosmeticKind kind, CosmeticRarity rarity, string assetKey)
+        public SimpleCosmeticDefinition(
+            CosmeticId id,
+            string displayName,
+            CosmeticKind kind,
+            CosmeticRarity rarity,
+            string assetKey,
+            AvatarRigCapability requiredCapabilities = AvatarRigCapability.None)
         {
             if (kind == CosmeticKind.Character || kind == CosmeticKind.Pogo || kind == CosmeticKind.SkillVisual)
                 throw new ArgumentException("Use the specialized definition for this kind.", nameof(kind));
@@ -87,6 +109,12 @@ namespace PogoDom.Cosmetics
             Kind = kind;
             Rarity = rarity;
             AssetKey = assetKey.Trim();
+            RequiredCapabilities = requiredCapabilities;
+        }
+
+        public bool Supports(CharacterDefinition character)
+        {
+            return character != null && character.Supports(RequiredCapabilities);
         }
     }
 
@@ -99,8 +127,16 @@ namespace PogoDom.Cosmetics
         public string AssetKey { get; }
         public SkillVisualTrigger Trigger { get; }
         public PowerUpKind PowerContext { get; }
+        public AvatarRigCapability RequiredCapabilities { get; }
 
-        public SkillVisualDefinition(CosmeticId id, string displayName, CosmeticRarity rarity, string assetKey, SkillVisualTrigger trigger, PowerUpKind powerContext = PowerUpKind.None)
+        public SkillVisualDefinition(
+            CosmeticId id,
+            string displayName,
+            CosmeticRarity rarity,
+            string assetKey,
+            SkillVisualTrigger trigger,
+            PowerUpKind powerContext = PowerUpKind.None,
+            AvatarRigCapability requiredCapabilities = AvatarRigCapability.None)
         {
             if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(assetKey))
                 throw new ArgumentException("Display name and asset key are required.");
@@ -110,6 +146,12 @@ namespace PogoDom.Cosmetics
             AssetKey = assetKey.Trim();
             Trigger = trigger;
             PowerContext = powerContext;
+            RequiredCapabilities = requiredCapabilities;
+        }
+
+        public bool Supports(CharacterDefinition character)
+        {
+            return character != null && character.Supports(RequiredCapabilities);
         }
     }
 }

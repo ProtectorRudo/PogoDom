@@ -10,7 +10,8 @@ namespace PogoDom.Session
         LeaderMissile = 1,
         LateLeadChange = 2,
         PhotoFinish = 3,
-        ComebackWin = 4
+        ComebackWin = 4,
+        AreaCapture = 5
     }
 
     public sealed class HighlightMoment
@@ -60,6 +61,8 @@ namespace PogoDom.Session
                     AddOnce(HighlightKind.BigBank, _localPlayerId, e.Value, Math.Min(100, 50 + e.Value * 3));
                 else if (e.Type == MatchEventType.MissileFired)
                     AddOnce(HighlightKind.LeaderMissile, _localPlayerId, e.SecondaryPlayerId, 72);
+                else if (e.Type == MatchEventType.EnclosureCaptured && e.Value >= 3)
+                    AddOnce(HighlightKind.AreaCapture, _localPlayerId, e.Value, Math.Min(100, 68 + e.Value * 4));
             }
 
             var leader = MatchOutcome.Leader(state);

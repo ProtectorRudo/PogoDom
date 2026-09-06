@@ -38,7 +38,7 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Players.Count; i++)
                 PowerUpResolver.ApplyItemUnderPlayer(state, state.Players[i], _config, result.Events);
 
-            PaintPlayers(state, state.Players, result.Events);
+            PaintPlayers(state, state.Players, result.Events, _config);
 
             var desired = ResolveDirections(state, externalDirections);
             RunMovementPhase(state, desired, result, 1);
@@ -56,7 +56,7 @@ namespace PogoDom.Core
                 for (var i = 0; i < speedPlayers.Count; i++)
                     PowerUpResolver.ApplyItemUnderPlayer(state, speedPlayers[i], _config, result.Events);
 
-                PaintPlayers(state, speedPlayers, result.Events);
+                PaintPlayers(state, speedPlayers, result.Events, _config);
 
                 var speedDirections = new Dictionary<int, Direction>();
                 for (var i = 0; i < state.Players.Count; i++)
@@ -151,8 +151,6 @@ namespace PogoDom.Core
                     phase));
             }
 
-            // Stationary players are still part of collision resolution but do not
-            // produce fake "blocked" events. This keeps telemetry about friction honest.
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
@@ -163,8 +161,16 @@ namespace PogoDom.Core
             }
         }
 
-        private static void PaintPlayers(MatchState state, IReadOnlyList<PlayerState> players, List<MatchEvent> events)
+        private static void PaintPlayers(
+            MatchState state,
+            IReadOnlyList<PlayerState> players,
+            List<MatchEvent> events,
+            MatchConfig config)
         {
+            var anyDirectPaint = false;
+
+            // Phase A: all landing paints happen before any area-fill calculation.
+            // This prevents player-list order from deciding whether a loop exists.
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
@@ -172,6 +178,7 @@ namespace PogoDom.Core
                 if (previousOwner == player.Id)
                     continue;
 
+                anyDirectPaint = true;
                 state.Board.SetOwner(player.Position, player.Id);
                 if (previousOwner >= 0)
                 {
@@ -187,6 +194,26 @@ namespace PogoDom.Core
                 {
                     events.Add(new MatchEvent(MatchEventType.TilePainted, player.Id, player.Position, 1));
                 }
+            }
+
+            if (!config.EnableEnclosureCapture || !anyDirectPaint)
+                return;
+
+            // Phase B: every player sees the same post-paint board. Contested enclosed
+            // cells are intentionally left unchanged rather than resolved by player id.
+            var captures = EnclosureResolver.CaptureSimultaneous(state.Board, state.Players);
+            for (var i = 0; i < captures.Count; i++)
+            {
+                var capture = captures[i];
+                if (capture.Count == 0) continue;
+
+                var player = state.PlayerById(capture.PlayerId);
+                var pos = player == null ? default : player.Position;
+                events.Add(new MatchEvent(
+                    MatchEventType.EnclosureCaptured,
+                    capture.PlayerId,
+                    pos,
+                    capture.Count));
             }
         }
 

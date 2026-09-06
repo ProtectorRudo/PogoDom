@@ -57,6 +57,8 @@ namespace PogoDom.Cosmetics
                 RequireOwned(character.DefaultPogoId);
                 loadout.PogoId = character.DefaultPogoId;
             }
+
+            RemoveIncompatiblePresentation(loadout, character);
         }
 
         public void EquipPogo(CosmeticLoadout loadout, CosmeticId pogoId)
@@ -72,7 +74,11 @@ namespace PogoDom.Cosmetics
         public void EquipSimple(CosmeticLoadout loadout, CosmeticId id)
         {
             RequireOwned(id);
-            var item = _catalog.Get(id);
+            var item = _catalog.Get<SimpleCosmeticDefinition>(id);
+            var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
+            if (!item.Supports(character))
+                throw new InvalidOperationException("Cosmetic requires avatar rig capabilities the equipped character does not provide: " + id);
+
             switch (item.Kind)
             {
                 case CosmeticKind.Trail: loadout.TrailId = id; break;
@@ -89,6 +95,9 @@ namespace PogoDom.Cosmetics
         {
             RequireOwned(id);
             var incoming = _catalog.Get<SkillVisualDefinition>(id);
+            var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
+            if (!incoming.Supports(character))
+                throw new InvalidOperationException("Skill visual requires avatar rig capabilities the equipped character does not provide: " + id);
 
             // One equipped cosmetic per trigger/context slot. This prevents
             // purchase order from changing which effect is rendered and keeps
@@ -101,6 +110,29 @@ namespace PogoDom.Cosmetics
             }
 
             loadout.SkillVisualIds.Add(id);
+        }
+
+        private void RemoveIncompatiblePresentation(CosmeticLoadout loadout, CharacterDefinition character)
+        {
+            loadout.TrailId = KeepIfCompatible(loadout.TrailId, character);
+            loadout.LandingFxId = KeepIfCompatible(loadout.LandingFxId, character);
+            loadout.VictoryEmoteId = KeepIfCompatible(loadout.VictoryEmoteId, character);
+            loadout.HeadwearId = KeepIfCompatible(loadout.HeadwearId, character);
+            loadout.BackAccessoryId = KeepIfCompatible(loadout.BackAccessoryId, character);
+            loadout.AuraId = KeepIfCompatible(loadout.AuraId, character);
+
+            for (var i = loadout.SkillVisualIds.Count - 1; i >= 0; i--)
+            {
+                var visual = _catalog.Get<SkillVisualDefinition>(loadout.SkillVisualIds[i]);
+                if (!visual.Supports(character)) loadout.SkillVisualIds.RemoveAt(i);
+            }
+        }
+
+        private CosmeticId KeepIfCompatible(CosmeticId id, CharacterDefinition character)
+        {
+            if (string.IsNullOrEmpty(id.Value)) return id;
+            var item = _catalog.Get<SimpleCosmeticDefinition>(id);
+            return item.Supports(character) ? id : default;
         }
 
         private void RequireOwned(CosmeticId id)

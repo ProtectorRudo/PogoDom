@@ -68,7 +68,7 @@ namespace PogoDom.Editor
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.Android.bundleVersionCode = 1;
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel25;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
 
             // The first device gate is an installable development APK, not a Play Store release.

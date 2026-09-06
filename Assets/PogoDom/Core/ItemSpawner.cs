@@ -17,6 +17,8 @@ namespace PogoDom.Core
                 FillImmediately(state, PowerUpKind.Arrow, config.TargetArrows, config, random, events);
                 FillImmediately(state, PowerUpKind.Speed, config.TargetSpeedPickups, config, random, events);
                 FillImmediately(state, PowerUpKind.Missile, config.TargetMissiles, config, random, events);
+                if (config.EnablePadlockPower)
+                    FillImmediately(state, PowerUpKind.Padlock, config.TargetPadlocks, config, random, events);
                 _primed = true;
                 return;
             }
@@ -25,37 +27,23 @@ namespace PogoDom.Core
             ReplenishWithDelay(state, PowerUpKind.Arrow, config.TargetArrows, config.ArrowRespawnDelayTicks, config, random, events);
             ReplenishWithDelay(state, PowerUpKind.Speed, config.TargetSpeedPickups, config.SpeedRespawnDelayTicks, config, random, events);
             ReplenishWithDelay(state, PowerUpKind.Missile, config.TargetMissiles, config.MissileRespawnDelayTicks, config, random, events);
+            if (config.EnablePadlockPower)
+                ReplenishWithDelay(state, PowerUpKind.Padlock, config.TargetPadlocks, config.PadlockRespawnDelayTicks, config, random, events);
         }
 
-        private void FillImmediately(
-            MatchState state,
-            PowerUpKind kind,
-            int target,
-            MatchConfig config,
-            IRandomSource random,
-            List<MatchEvent> events)
+        private void FillImmediately(MatchState state, PowerUpKind kind, int target, MatchConfig config, IRandomSource random, List<MatchEvent> events)
         {
             var count = Count(state, kind);
             while (count < target)
             {
-                if (!TrySpawnOne(state, kind, config, random, events))
-                    return;
+                if (!TrySpawnOne(state, kind, config, random, events)) return;
                 count++;
             }
         }
 
-        private void ReplenishWithDelay(
-            MatchState state,
-            PowerUpKind kind,
-            int target,
-            int delayTicks,
-            MatchConfig config,
-            IRandomSource random,
-            List<MatchEvent> events)
+        private void ReplenishWithDelay(MatchState state, PowerUpKind kind, int target, int delayTicks, MatchConfig config, IRandomSource random, List<MatchEvent> events)
         {
-            if (target <= 0)
-                return;
-
+            if (target <= 0) return;
             var count = Count(state, kind);
             if (count >= target)
             {
@@ -69,35 +57,24 @@ namespace PogoDom.Core
                 _nextSpawnTick[kind] = state.Tick + Math.Max(1, delayTicks);
                 return;
             }
-
-            if (state.Tick < dueTick)
-                return;
+            if (state.Tick < dueTick) return;
 
             if (TrySpawnOne(state, kind, config, random, events))
             {
                 count++;
-                if (count < target)
-                    _nextSpawnTick[kind] = state.Tick + Math.Max(1, delayTicks);
-                else
-                    _nextSpawnTick.Remove(kind);
+                if (count < target) _nextSpawnTick[kind] = state.Tick + Math.Max(1, delayTicks);
+                else _nextSpawnTick.Remove(kind);
             }
             else
             {
-                // Board temporarily saturated. Retry next tick instead of spinning.
                 _nextSpawnTick[kind] = state.Tick + 1;
             }
         }
 
-        private bool TrySpawnOne(
-            MatchState state,
-            PowerUpKind kind,
-            MatchConfig config,
-            IRandomSource random,
-            List<MatchEvent> events)
+        private bool TrySpawnOne(MatchState state, PowerUpKind kind, MatchConfig config, IRandomSource random, List<MatchEvent> events)
         {
             GridPos pos;
-            if (!TryFindSpawnPosition(state, kind, config, random, out pos))
-                return false;
+            if (!TryFindSpawnPosition(state, kind, config, random, out pos)) return false;
 
             var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
             var item = new ItemState(_nextItemId++, kind, pos, arrowDirection);
@@ -115,26 +92,14 @@ namespace PogoDom.Core
             return count;
         }
 
-        private static bool TryFindSpawnPosition(
-            MatchState state,
-            PowerUpKind kind,
-            MatchConfig config,
-            IRandomSource random,
-            out GridPos position)
+        private static bool TryFindSpawnPosition(MatchState state, PowerUpKind kind, MatchConfig config, IRandomSource random, out GridPos position)
         {
             var attempts = Math.Max(64, state.Board.Count * 4);
             for (var i = 0; i < attempts; i++)
             {
-                var candidate = new GridPos(
-                    random.NextInt(0, state.Board.Width),
-                    random.NextInt(0, state.Board.Height));
-
-                if (state.ItemAt(candidate) != null || IsPlayerAt(state, candidate))
-                    continue;
-
-                if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance))
-                    continue;
-
+                var candidate = new GridPos(random.NextInt(0, state.Board.Width), random.NextInt(0, state.Board.Height));
+                if (state.ItemAt(candidate) != null || state.HazardAt(candidate) != null || IsPlayerAt(state, candidate)) continue;
+                if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance)) continue;
                 position = candidate;
                 return true;
             }
@@ -144,10 +109,8 @@ namespace PogoDom.Core
                 for (var x = 0; x < state.Board.Width; x++)
                 {
                     var candidate = new GridPos(x, y);
-                    if (state.ItemAt(candidate) != null || IsPlayerAt(state, candidate))
-                        continue;
-                    if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance))
-                        continue;
+                    if (state.ItemAt(candidate) != null || state.HazardAt(candidate) != null || IsPlayerAt(state, candidate)) continue;
+                    if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance)) continue;
                     position = candidate;
                     return true;
                 }
@@ -169,14 +132,10 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Items.Count; i++)
             {
                 var item = state.Items[i];
-                if (item.Kind != PowerUpKind.BankCrate)
-                    continue;
-
+                if (item.Kind != PowerUpKind.BankCrate) continue;
                 var dx = Math.Abs(item.Position.X - candidate.X);
                 var dy = Math.Abs(item.Position.Y - candidate.Y);
-                var chebyshev = Math.Max(dx, dy);
-                if (chebyshev < minimumDistance)
-                    return true;
+                if (Math.Max(dx, dy) < minimumDistance) return true;
             }
             return false;
         }

@@ -9,9 +9,8 @@ namespace PogoDom.Core
     {
         V1 = 1,
         V2 = 2,
-        // V3 keeps V2 spawn semantics and introduces the adaptive rival brain
-        // for Medium bots. Historical V1/V2 replays remain byte-for-byte on
-        // their old decision path.
+        // V3 introduces the adaptive rival decision path for Medium bots.
+        // Published V1/V2 rulesets remain on their historical bot behavior.
         V3 = 3
     }
 }

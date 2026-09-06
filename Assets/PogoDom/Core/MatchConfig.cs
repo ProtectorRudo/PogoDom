@@ -20,6 +20,9 @@ namespace PogoDom.Core
         public int TargetMysteryCrates { get; set; } = 2;
         public int MysteryCrateRespawnDelayTicks { get; set; } = 12;
         public MysteryCrateTableId MysteryCrateTableId { get; set; } = MysteryCrateTableId.PowerMixV1;
+        public int MysteryCrateMinimumPlayerManhattanDistance { get; set; } = 2;
+        public int MysteryCrateMinimumCrateChebyshevDistance { get; set; } = 2;
+        public int MysteryCrateMaximumClosestPlayerDistanceGap { get; set; } = 1;
 
         public bool EnableEnclosureCapture { get; set; } = false;
         public EnclosureCapturePolicy EnclosureCapturePolicy { get; set; } = EnclosureCapturePolicy.AllUnprotected;

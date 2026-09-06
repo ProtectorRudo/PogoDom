@@ -65,5 +65,10 @@ jobs:
         run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --difficulty-lab --matches 200 --seed 20260905 --assert
       - name: Restore mystery crate lab
         run: dotnet restore headless/PogoDom.CrateLab.csproj
-      - name: Certify mystery crate lifecycle
-        run: dotnet run --project headless/PogoDom.CrateLab.csproj --configuration Release -- --matches 200 --seed 20260906 --assert
+      - name: Compare mystery crate V1 and V2 fairness
+        shell: bash
+        run: |
+          for variant in v1 v2; do
+            echo "===== crates-$variant ====="
+            dotnet run --project headless/PogoDom.CrateLab.csproj --configuration Release -- --matches 200 --seed 20260906 --variant "$variant" --assert
+          done

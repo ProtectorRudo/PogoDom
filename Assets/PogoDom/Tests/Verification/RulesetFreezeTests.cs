@@ -44,7 +44,7 @@ namespace PogoDom.Tests.Verification
         }
 
         [Test]
-        public void EveryPublishedRulesetPinsLegacyBehaviorV1()
+        public void EveryPublishedLegacyRulesetPinsBehaviorV1()
         {
             var configs = new[]
             {
@@ -71,13 +71,14 @@ namespace PogoDom.Tests.Verification
         }
 
         [Test]
-        public void V2CandidatesHaveExplicitNonV1Tuning()
+        public void V2CandidatesHaveExplicitNonV1TuningOrBehavior()
         {
             Assert.AreEqual(EnclosureCapturePolicy.NeutralOnly, RulesetPresets.LoopV2().EnclosureCapturePolicy);
             Assert.AreEqual(20, RulesetPresets.ChaosV2().TntInitialDelayTicks);
             Assert.AreEqual(30, RulesetPresets.ChaosV2().TntSpawnIntervalTicks);
             Assert.AreEqual(10, RulesetPresets.PadlockV2().PadlockDurationTicks);
             Assert.AreEqual(24, RulesetPresets.PadlockV2().PadlockRespawnDelayTicks);
+            Assert.AreEqual(RulesetBehaviorVersion.V2, RulesetPresets.CratesV2().BehaviorVersion);
         }
 
         [Test]
@@ -92,6 +93,27 @@ namespace PogoDom.Tests.Verification
             Assert.AreEqual(0, config.TargetSpeedPickups);
             Assert.AreEqual(0, config.TargetMissiles);
             Assert.AreEqual(0, config.TargetPadlocks);
+        }
+
+        [Test]
+        public void CratesV2ChangesOnlySharedBehaviorVersionFromCratesV1()
+        {
+            var v1 = RulesetPresets.CratesV1();
+            var v2 = RulesetRegistry.CreateCurrent().Get("pogodom-crates-v2").CreateConfig();
+            var properties = typeof(MatchConfig).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            var differences = 0;
+            for (var i = 0; i < properties.Length; i++)
+            {
+                var p = properties[i];
+                var a = p.GetValue(v1, null);
+                var b = p.GetValue(v2, null);
+                if (Equals(a, b)) continue;
+                differences++;
+                Assert.AreEqual(nameof(MatchConfig.BehaviorVersion), p.Name);
+                Assert.AreEqual(RulesetBehaviorVersion.V1, a);
+                Assert.AreEqual(RulesetBehaviorVersion.V2, b);
+            }
+            Assert.AreEqual(1, differences);
         }
 
         [Test]

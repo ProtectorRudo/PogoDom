@@ -10,10 +10,11 @@ namespace PogoDom.Tests.Session
         public void HumanWinnerFacesRunnerUpAndOwnsCelebration()
         {
             var state = CreateState();
-            state.PlayerById(0).Score = 100;
-            state.PlayerById(1).Score = 80;
-            state.PlayerById(2).Score = 40;
-            state.PlayerById(3).Score = 20;
+            var cell = 0;
+            AwardScore(state, 0, 8, ref cell);
+            AwardScore(state, 1, 6, ref cell);
+            AwardScore(state, 2, 4, ref cell);
+            AwardScore(state, 3, 2, ref cell);
 
             var plan = WinnerShowcaseResolver.Create(state, 0);
 
@@ -30,10 +31,11 @@ namespace PogoDom.Tests.Session
         public void HumanLossFacesActualWinnerNotAnArbitraryBot()
         {
             var state = CreateState();
-            state.PlayerById(2).Score = 120;
-            state.PlayerById(3).Score = 90;
-            state.PlayerById(0).Score = 50;
-            state.PlayerById(1).Score = 10;
+            var cell = 0;
+            AwardScore(state, 2, 8, ref cell);
+            AwardScore(state, 3, 6, ref cell);
+            AwardScore(state, 0, 4, ref cell);
+            AwardScore(state, 1, 2, ref cell);
 
             var plan = WinnerShowcaseResolver.Create(state, 0);
 
@@ -50,7 +52,6 @@ namespace PogoDom.Tests.Session
         public void ShowcaseUsesExactDeterministicStandingTieBreaks()
         {
             var state = CreateState();
-            for (var i = 0; i < state.Players.Count; i++) state.Players[i].Score = 10;
 
             // Same score and no owned tiles means MatchOutcome falls back to
             // player id; showcase must never invent a different ordering.
@@ -76,6 +77,19 @@ namespace PogoDom.Tests.Session
         private static MatchState CreateState()
         {
             return MatchFactory.CreateClassicPrototype(new MatchConfig());
+        }
+
+        private static void AwardScore(MatchState state, int playerId, int amount, ref int nextCell)
+        {
+            var player = state.PlayerById(playerId);
+            for (var i = 0; i < amount; i++)
+            {
+                var x = nextCell % state.Board.Width;
+                var y = nextCell / state.Board.Width;
+                state.Board.SetOwner(new GridPos(x, y), playerId);
+                nextCell++;
+            }
+            BankingResolver.Bank(state, player);
         }
     }
 }

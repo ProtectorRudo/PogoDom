@@ -74,10 +74,15 @@ namespace PogoDom.Cosmetics
         public void EquipSimple(CosmeticLoadout loadout, CosmeticId id)
         {
             RequireOwned(id);
-            var item = _catalog.Get<SimpleCosmeticDefinition>(id);
-            var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
-            if (!item.Supports(character))
-                throw new InvalidOperationException("Cosmetic requires avatar rig capabilities the equipped character does not provide: " + id);
+            var item = _catalog.Get(id);
+
+            var simple = item as SimpleCosmeticDefinition;
+            if (simple != null && simple.RequiredCapabilities != AvatarRigCapability.None)
+            {
+                var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
+                if (!simple.Supports(character))
+                    throw new InvalidOperationException("Cosmetic requires avatar rig capabilities the equipped character does not provide: " + id);
+            }
 
             switch (item.Kind)
             {
@@ -95,9 +100,12 @@ namespace PogoDom.Cosmetics
         {
             RequireOwned(id);
             var incoming = _catalog.Get<SkillVisualDefinition>(id);
-            var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
-            if (!incoming.Supports(character))
-                throw new InvalidOperationException("Skill visual requires avatar rig capabilities the equipped character does not provide: " + id);
+            if (incoming.RequiredCapabilities != AvatarRigCapability.None)
+            {
+                var character = _catalog.Get<CharacterDefinition>(loadout.CharacterId);
+                if (!incoming.Supports(character))
+                    throw new InvalidOperationException("Skill visual requires avatar rig capabilities the equipped character does not provide: " + id);
+            }
 
             // One equipped cosmetic per trigger/context slot. This prevents
             // purchase order from changing which effect is rendered and keeps
@@ -124,14 +132,16 @@ namespace PogoDom.Cosmetics
             for (var i = loadout.SkillVisualIds.Count - 1; i >= 0; i--)
             {
                 var visual = _catalog.Get<SkillVisualDefinition>(loadout.SkillVisualIds[i]);
-                if (!visual.Supports(character)) loadout.SkillVisualIds.RemoveAt(i);
+                if (visual.RequiredCapabilities != AvatarRigCapability.None && !visual.Supports(character))
+                    loadout.SkillVisualIds.RemoveAt(i);
             }
         }
 
         private CosmeticId KeepIfCompatible(CosmeticId id, CharacterDefinition character)
         {
             if (string.IsNullOrEmpty(id.Value)) return id;
-            var item = _catalog.Get<SimpleCosmeticDefinition>(id);
+            var item = _catalog.Get(id) as SimpleCosmeticDefinition;
+            if (item == null || item.RequiredCapabilities == AvatarRigCapability.None) return id;
             return item.Supports(character) ? id : default;
         }
 

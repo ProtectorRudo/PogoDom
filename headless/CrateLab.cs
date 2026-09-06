@@ -27,30 +27,39 @@ internal static class CrateLab
             var config = variant == "v2" ? RulesetPresets.CratesV2() : RulesetPresets.CratesV1();
             var state = MatchFactory.CreateBotLab(config);
             var runner = new MatchRunner(config, new XorShiftRandom(seed + (uint)(m * 7919)));
-            var seenCrates = new HashSet<int>();
             runner.Initialize(state);
-            ObserveNewCrates(state, config, seenCrates, ref spawned, ref unsafeNearPlayer, ref unbalancedContest, ref crowdedCrates);
+
+            // Initialize() deliberately discards spawn events, but nobody has moved yet,
+            // so the initial population can be assessed directly without ambiguity.
+            ObserveInitialCrates(state, config, ref spawned, ref unsafeNearPlayer, ref unbalancedContest, ref crowdedCrates);
 
             var safety = 0;
             while (!state.IsFinished && safety++ < 10000)
             {
-                var result = runner.Tick(state);
-                ObserveNewCrates(state, config, seenCrates, ref spawned, ref unsafeNearPlayer, ref unbalancedContest, ref crowdedCrates);
+                // ItemSpawner can replenish both before and after movement. Snapshot the
+                // state before Tick(), then replay the emitted event order so a crate is
+                // judged against the player positions that existed at its exact spawn.
+                // Looking only at state after Tick() incorrectly calls a safe spawn unsafe
+                // when a player lands beside the crate later in the same bounce.
+                var playerPositions = SnapshotPlayerPositions(state);
+                var activeCrates = SnapshotCratePositions(state);
 
-                for (var i = 0; i < result.Events.Count; i++)
-                {
-                    var ev = result.Events[i];
-                    if (ev.Type != MatchEventType.CrateOpened) continue;
-                    opened++;
-                    switch (ev.ItemKind)
-                    {
-                        case PowerUpKind.Arrow: arrow++; break;
-                        case PowerUpKind.Speed: speed++; break;
-                        case PowerUpKind.Missile: missile++; break;
-                        case PowerUpKind.Padlock: padlock++; break;
-                        default: invalid++; break;
-                    }
-                }
+                var result = runner.Tick(state);
+                ObserveTickEvents(
+                    result.Events,
+                    playerPositions,
+                    activeCrates,
+                    config,
+                    ref spawned,
+                    ref opened,
+                    ref arrow,
+                    ref speed,
+                    ref missile,
+                    ref padlock,
+                    ref invalid,
+                    ref unsafeNearPlayer,
+                    ref unbalancedContest,
+                    ref crowdedCrates);
 
                 if (!StateValid(state) || HasLooseCombatPickup(state))
                 {
@@ -87,44 +96,127 @@ internal static class CrateLab
         return 0;
     }
 
-    private static void ObserveNewCrates(
+    private static void ObserveInitialCrates(
         MatchState state,
         MatchConfig config,
-        HashSet<int> seen,
         ref int spawned,
         ref int unsafeNearPlayer,
         ref int unbalancedContest,
         ref int crowdedCrates)
     {
-        for (var i = 0; i < state.Items.Count; i++)
+        var players = SnapshotPlayerPositions(state);
+        var crates = SnapshotCratePositions(state);
+        foreach (var crate in crates)
         {
-            var item = state.Items[i];
-            if (item.Kind != PowerUpKind.MysteryCrate || !seen.Add(item.Id)) continue;
+            var others = new HashSet<GridPos>(crates);
+            others.Remove(crate);
             spawned++;
+            AssessSpawn(crate, players, others, config, ref unsafeNearPlayer, ref unbalancedContest, ref crowdedCrates);
+        }
+    }
 
-            var closest = int.MaxValue;
-            var second = int.MaxValue;
-            for (var p = 0; p < state.Players.Count; p++)
+    private static void ObserveTickEvents(
+        List<MatchEvent> events,
+        Dictionary<int, GridPos> playerPositions,
+        HashSet<GridPos> activeCrates,
+        MatchConfig config,
+        ref int spawned,
+        ref int opened,
+        ref int arrow,
+        ref int speed,
+        ref int missile,
+        ref int padlock,
+        ref int invalid,
+        ref int unsafeNearPlayer,
+        ref int unbalancedContest,
+        ref int crowdedCrates)
+    {
+        for (var i = 0; i < events.Count; i++)
+        {
+            var ev = events[i];
+            switch (ev.Type)
             {
-                var distance = Manhattan(item.Position, state.Players[p].Position);
-                if (distance < config.MysteryCrateMinimumPlayerManhattanDistance) unsafeNearPlayer++;
-                if (distance < closest) { second = closest; closest = distance; }
-                else if (distance < second) second = distance;
-            }
-            if (second != int.MaxValue && second - closest > config.MysteryCrateMaximumClosestPlayerDistanceGap)
-                unbalancedContest++;
-
-            for (var j = 0; j < state.Items.Count; j++)
-            {
-                var other = state.Items[j];
-                if (other.Id == item.Id || other.Kind != PowerUpKind.MysteryCrate) continue;
-                if (Chebyshev(item.Position, other.Position) < config.MysteryCrateMinimumCrateChebyshevDistance)
-                {
-                    crowdedCrates++;
+                case MatchEventType.ItemSpawned:
+                    if (ev.ItemKind != PowerUpKind.MysteryCrate) break;
+                    spawned++;
+                    AssessSpawn(ev.Position, playerPositions, activeCrates, config, ref unsafeNearPlayer, ref unbalancedContest, ref crowdedCrates);
+                    activeCrates.Add(ev.Position);
                     break;
-                }
+
+                case MatchEventType.ItemConsumed:
+                    if (ev.ItemKind == PowerUpKind.MysteryCrate)
+                        activeCrates.Remove(ev.Position);
+                    break;
+
+                case MatchEventType.PlayerMoved:
+                case MatchEventType.PlayerBlocked:
+                    if (ev.PlayerId >= 0)
+                        playerPositions[ev.PlayerId] = ev.Position;
+                    break;
+
+                case MatchEventType.CrateOpened:
+                    opened++;
+                    switch (ev.ItemKind)
+                    {
+                        case PowerUpKind.Arrow: arrow++; break;
+                        case PowerUpKind.Speed: speed++; break;
+                        case PowerUpKind.Missile: missile++; break;
+                        case PowerUpKind.Padlock: padlock++; break;
+                        default: invalid++; break;
+                    }
+                    break;
             }
         }
+    }
+
+    private static void AssessSpawn(
+        GridPos position,
+        Dictionary<int, GridPos> playerPositions,
+        HashSet<GridPos> otherCrates,
+        MatchConfig config,
+        ref int unsafeNearPlayer,
+        ref int unbalancedContest,
+        ref int crowdedCrates)
+    {
+        var closest = int.MaxValue;
+        var second = int.MaxValue;
+        foreach (var pair in playerPositions)
+        {
+            var distance = Manhattan(position, pair.Value);
+            if (distance < config.MysteryCrateMinimumPlayerManhattanDistance)
+                unsafeNearPlayer++;
+            if (distance < closest) { second = closest; closest = distance; }
+            else if (distance < second) second = distance;
+        }
+
+        if (second != int.MaxValue && second - closest > config.MysteryCrateMaximumClosestPlayerDistanceGap)
+            unbalancedContest++;
+
+        foreach (var other in otherCrates)
+        {
+            if (Chebyshev(position, other) < config.MysteryCrateMinimumCrateChebyshevDistance)
+            {
+                crowdedCrates++;
+                break;
+            }
+        }
+    }
+
+    private static Dictionary<int, GridPos> SnapshotPlayerPositions(MatchState state)
+    {
+        var positions = new Dictionary<int, GridPos>();
+        for (var i = 0; i < state.Players.Count; i++)
+            positions[state.Players[i].Id] = state.Players[i].Position;
+        return positions;
+    }
+
+    private static HashSet<GridPos> SnapshotCratePositions(MatchState state)
+    {
+        var positions = new HashSet<GridPos>();
+        for (var i = 0; i < state.Items.Count; i++)
+            if (state.Items[i].Kind == PowerUpKind.MysteryCrate)
+                positions.Add(state.Items[i].Position);
+        return positions;
     }
 
     private static bool HasLooseCombatPickup(MatchState state)

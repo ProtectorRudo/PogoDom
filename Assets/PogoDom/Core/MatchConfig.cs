@@ -15,6 +15,11 @@ namespace PogoDom.Core
         public int ArrowRotationIntervalTicks { get; set; } = 2;
         public int BankThresholdForBots { get; set; } = 5;
 
+        // Experimental PogoDom evolution of the classic paint/bank loop. Closing a
+        // boundary automatically paints the unreachable interior, but those tiles stay
+        // unbanked until the player reaches a Bank Crate. No extra button is introduced.
+        public bool EnableEnclosureCapture { get; set; } = false;
+
         // Initial items are present immediately. Replacement items have deliberate
         // scarcity so a pickup creates a hotspot instead of constant visual noise.
         public int BankRespawnDelayTicks { get; set; } = 6;      // 3 s

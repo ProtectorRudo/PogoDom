@@ -4,6 +4,7 @@ namespace PogoDom.Core
     {
         TilePainted,
         TileStolen,
+        EnclosureCaptured,
         PlayerMoved,
         PlayerBlocked,
         Banked,

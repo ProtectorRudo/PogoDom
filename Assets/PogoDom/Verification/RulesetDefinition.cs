@@ -18,6 +18,7 @@ namespace PogoDom.Verification
         public int MinimumBankCrateChebyshevDistance { get; }
         public int ArrowRotationIntervalTicks { get; }
         public int BankThresholdForBots { get; }
+        public bool EnableEnclosureCapture { get; }
         public int BankRespawnDelayTicks { get; }
         public int ArrowRespawnDelayTicks { get; }
         public int SpeedRespawnDelayTicks { get; }
@@ -40,6 +41,7 @@ namespace PogoDom.Verification
             MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance;
             ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks;
             BankThresholdForBots = config.BankThresholdForBots;
+            EnableEnclosureCapture = config.EnableEnclosureCapture;
             BankRespawnDelayTicks = config.BankRespawnDelayTicks;
             ArrowRespawnDelayTicks = config.ArrowRespawnDelayTicks;
             SpeedRespawnDelayTicks = config.SpeedRespawnDelayTicks;
@@ -63,6 +65,7 @@ namespace PogoDom.Verification
                 MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance,
                 ArrowRotationIntervalTicks = ArrowRotationIntervalTicks,
                 BankThresholdForBots = BankThresholdForBots,
+                EnableEnclosureCapture = EnableEnclosureCapture,
                 BankRespawnDelayTicks = BankRespawnDelayTicks,
                 ArrowRespawnDelayTicks = ArrowRespawnDelayTicks,
                 SpeedRespawnDelayTicks = SpeedRespawnDelayTicks,
@@ -94,6 +97,12 @@ namespace PogoDom.Verification
         {
             var registry = new RulesetRegistry();
             registry.Add(new RulesetDefinition("launch-m0-2", new MatchConfig()));
+
+            // Same battle tuning, one isolated mechanic changed. This gives us a clean
+            // A/B ruleset instead of mixing enclosure with unrelated balance changes.
+            registry.Add(new RulesetDefinition(
+                "pogodom-loop-v1",
+                new MatchConfig { EnableEnclosureCapture = true }));
             return registry;
         }
     }

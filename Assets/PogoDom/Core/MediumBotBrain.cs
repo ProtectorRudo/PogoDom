@@ -64,6 +64,16 @@ namespace PogoDom.Core
                     score += 4f;
             }
 
+            if (config.EnableEnclosureCapture && owner != bot.Id)
+            {
+                var enclosure = EnclosureResolver.PreviewCaptureCount(state.Board, bot.Id, next);
+                if (enclosure > 0)
+                {
+                    var enclosureWeight = bot.BotPersonality == BotPersonality.Banker ? 4.2f : 3.4f;
+                    score += Math.Min(30f, enclosure * enclosureWeight);
+                }
+            }
+
             var item = state.ItemAt(next);
             if (item != null)
             {
@@ -83,7 +93,6 @@ namespace PogoDom.Core
                 score += (before - after) * focusWeight;
             }
 
-            // Occupied squares are legal candidates at the rules layer but usually waste a bounce.
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var other = state.Players[i];

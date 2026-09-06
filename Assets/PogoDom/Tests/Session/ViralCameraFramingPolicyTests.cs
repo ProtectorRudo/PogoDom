@@ -30,7 +30,10 @@ namespace PogoDom.Tests.Session
             var shortActors = ViralCameraFramingPolicy.Fit(8.4f, 8.4f, 9f / 16f, visualHeight: 1.2f);
             var tallActors = ViralCameraFramingPolicy.Fit(8.4f, 8.4f, 9f / 16f, visualHeight: 3.2f);
 
-            Assert.Greater(tallActors.Distance, shortActors.Distance);
+            // On narrow portrait screens horizontal arena width can already be
+            // the limiting axis. Taller actors are allowed to keep the same fit,
+            // but must never make the camera move closer.
+            Assert.GreaterOrEqual(tallActors.Distance, shortActors.Distance);
         }
 
         [TestCase(0f, 8f, 1f)]

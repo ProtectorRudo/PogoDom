@@ -52,5 +52,12 @@ jobs:
         run: dotnet test headless/PogoDom.Verification.Tests.csproj --configuration Release --no-build --verbosity normal
       - name: Restore simulation lab
         run: dotnet restore headless/PogoDom.Sim.csproj
-      - name: Run 250 headless matches
-        run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 250 --seed 20260905 --assert
+      - name: Certify launch baseline over 250 matches
+        run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 250 --seed 20260905 --variant launch --assert
+      - name: Compare experimental rule families headlessly
+        shell: bash
+        run: |
+          for variant in loop chaos padlock fusion; do
+            echo "===== $variant ====="
+            dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 100 --seed 20260905 --variant "$variant" --assert
+          done

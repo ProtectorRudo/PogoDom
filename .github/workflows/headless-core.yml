@@ -54,10 +54,10 @@ jobs:
         run: dotnet restore headless/PogoDom.Sim.csproj
       - name: Certify launch baseline over 250 matches
         run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 250 --seed 20260905 --variant launch --assert
-      - name: Compare v1 and v2 experimental families headlessly
+      - name: Compare adaptive rivals and experimental families headlessly
         shell: bash
         run: |
-          for variant in loop loop2 chaos chaos2 padlock padlock2 fusion; do
+          for variant in rivals loop loop2 chaos chaos2 padlock padlock2 fusion; do
             echo "===== $variant ====="
             dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 100 --seed 20260905 --variant "$variant" --assert
           done

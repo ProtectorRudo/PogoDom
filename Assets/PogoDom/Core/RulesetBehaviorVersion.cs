@@ -8,6 +8,9 @@ namespace PogoDom.Core
     public enum RulesetBehaviorVersion
     {
         V1 = 1,
-        V2 = 2
+        V2 = 2,
+        // V3 introduces the adaptive rival decision path for Medium bots.
+        // Published V1/V2 rulesets remain on their historical bot behavior.
+        V3 = 3
     }
 }

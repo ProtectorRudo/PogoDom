@@ -77,6 +77,15 @@ namespace PogoDom.Verification
             return config;
         }
 
+        public static MatchConfig RivalsV1()
+        {
+            var config = BaseM02();
+            // Same battle economy as launch. Only Medium-bot decision semantics
+            // change so we can A/B opponent entertainment without confounds.
+            config.BehaviorVersion = RulesetBehaviorVersion.V3;
+            return config;
+        }
+
         private static MatchConfig BaseM02()
         {
             return new MatchConfig

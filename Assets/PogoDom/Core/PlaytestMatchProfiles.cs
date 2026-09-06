@@ -9,7 +9,8 @@ namespace PogoDom.Core
         PadlockV2 = 2,
         ChaosV2 = 3,
         CratesV1 = 4,
-        CratesV2 = 5
+        CratesV2 = 5,
+        RivalsV1 = 6
     }
 
     /// <summary>
@@ -49,6 +50,10 @@ namespace PogoDom.Core
 
                 case PlaytestRulesetMode.CratesV2:
                     return ConfigureCrates(config, RulesetBehaviorVersion.V2);
+
+                case PlaytestRulesetMode.RivalsV1:
+                    config.BehaviorVersion = RulesetBehaviorVersion.V3;
+                    return config;
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown playtest ruleset.");

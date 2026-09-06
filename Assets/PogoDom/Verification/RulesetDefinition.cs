@@ -100,6 +100,7 @@ namespace PogoDom.Verification
             registry.Add(new RulesetDefinition("pogodom-padlock-v2", RulesetPresets.PadlockV2()));
             registry.Add(new RulesetDefinition("pogodom-crates-v1", RulesetPresets.CratesV1()));
             registry.Add(new RulesetDefinition("pogodom-crates-v2", RulesetPresets.CratesV2()));
+            registry.Add(new RulesetDefinition("pogodom-rivals-v1", RulesetPresets.RivalsV1()));
             return registry;
         }
     }

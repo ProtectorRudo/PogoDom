@@ -5,8 +5,6 @@
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <BaseIntermediateOutputPath>obj/Core/</BaseIntermediateOutputPath>
-    <BaseOutputPath>bin/Core/</BaseOutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Assets/PogoDom/Core/**/*.cs" />

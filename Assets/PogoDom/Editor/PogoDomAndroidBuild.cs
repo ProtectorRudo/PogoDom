@@ -27,10 +27,8 @@ namespace PogoDom.Editor
         [MenuItem("PogoDom/Build/2 - Build Android APK (Development)")]
         public static void BuildAndroidDevelopment()
         {
+            EnsureAndroidBuildTarget();
             PrepareUnityProject();
-
-            if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android))
-                throw new InvalidOperationException("Could not switch Unity build target to Android. Install Android Build Support from Unity Hub.");
 
             Directory.CreateDirectory(OutputFolder);
             EditorUserBuildSettings.buildAppBundle = false;
@@ -52,11 +50,27 @@ namespace PogoDom.Editor
                       " | size=" + summary.totalSize + " bytes | time=" + summary.totalTime);
         }
 
-        // Can be invoked from a terminal/CI with:
-        // Unity.exe -batchmode -quit -projectPath <repo> -executeMethod PogoDom.Editor.PogoDomAndroidBuild.BuildAndroidDevelopmentBatch -logFile -
+        // Terminal/CI example:
+        // Unity.exe -batchmode -quit -buildTarget Android -projectPath <repo> -executeMethod PogoDom.Editor.PogoDomAndroidBuild.BuildAndroidDevelopmentBatch -logFile -
         public static void BuildAndroidDevelopmentBatch()
         {
             BuildAndroidDevelopment();
+        }
+
+        private static void EnsureAndroidBuildTarget()
+        {
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
+                return;
+
+            if (Application.isBatchMode)
+            {
+                throw new InvalidOperationException(
+                    "POGODOM batch build must start Unity with '-buildTarget Android'. " +
+                    "Unity cannot reliably switch active build targets from an executeMethod while running in batch mode.");
+            }
+
+            if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android))
+                throw new InvalidOperationException("Could not switch Unity build target to Android. Install Android Build Support from Unity Hub.");
         }
 
         private static void ConfigurePlayerSettings()

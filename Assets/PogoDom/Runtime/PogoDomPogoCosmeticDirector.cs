@@ -89,15 +89,22 @@ namespace PogoDom.Runtime
     {
         private bool _initialized;
         private PogoSilhouetteFamily _family;
+        private Vector3 _baseFootScale;
+        private Vector3 _baseSpringScale;
+        private Vector3 _baseHandleScale;
+        private Transform _foot;
+        private Transform _spring;
+        private Transform _handle;
 
         public void Initialize(PogoSilhouetteFamily family, Color color)
         {
-            if (_initialized)
+            if (_initialized && _family == family) return;
+
+            if (!_initialized)
+                CaptureBaseProportions();
+            else
             {
-                // Current battle slots keep one profile for the whole match. If a
-                // future locker swaps profile live, rebuilding is safer than
-                // silently stacking geometry.
-                if (_family == family) return;
+                RestoreBaseProportions();
                 ClearDecoration();
             }
 
@@ -108,31 +115,45 @@ namespace PogoDom.Runtime
             BuildDecoration(profile, color);
         }
 
+        private void CaptureBaseProportions()
+        {
+            _foot = FindChild("PogoFoot");
+            _spring = FindChild("PogoSpring");
+            _handle = FindChild("PogoHandle");
+            if (_foot != null) _baseFootScale = _foot.localScale;
+            if (_spring != null) _baseSpringScale = _spring.localScale;
+            if (_handle != null) _baseHandleScale = _handle.localScale;
+        }
+
+        private void RestoreBaseProportions()
+        {
+            if (_foot != null) _foot.localScale = _baseFootScale;
+            if (_spring != null) _spring.localScale = _baseSpringScale;
+            if (_handle != null) _handle.localScale = _baseHandleScale;
+        }
+
         private void ApplyBaseProportions(PogoSilhouetteProfile profile)
         {
-            var foot = FindChild("PogoFoot");
-            if (foot != null)
+            if (_foot != null)
             {
-                var s = foot.localScale;
+                var s = _baseFootScale;
                 s.x *= profile.FootWidthScale;
-                foot.localScale = s;
+                _foot.localScale = s;
             }
 
-            var spring = FindChild("PogoSpring");
-            if (spring != null)
+            if (_spring != null)
             {
-                var s = spring.localScale;
+                var s = _baseSpringScale;
                 s.x *= profile.SpringWidthScale;
                 s.z *= profile.SpringWidthScale;
-                spring.localScale = s;
+                _spring.localScale = s;
             }
 
-            var handle = FindChild("PogoHandle");
-            if (handle != null)
+            if (_handle != null)
             {
-                var s = handle.localScale;
+                var s = _baseHandleScale;
                 s.y *= profile.HandleWidthScale;
-                handle.localScale = s;
+                _handle.localScale = s;
             }
         }
 
@@ -152,8 +173,8 @@ namespace PogoDom.Runtime
                     break;
 
                 case PogoSilhouetteFamily.TricksterCoil:
-                    Part("CoilRingLow", PrimitiveType.TorusFallback(), root.transform, new Vector3(0f, -0.10f, 0f), new Vector3(0.17f, 0.035f, 0.17f), accent, Quaternion.identity, false);
-                    Part("CoilRingHigh", PrimitiveType.TorusFallback(), root.transform, new Vector3(0f, 0.07f, 0f), new Vector3(0.15f, 0.035f, 0.15f), accent, Quaternion.identity, false);
+                    Part("CoilRingLow", PrimitiveType.Cylinder, root.transform, new Vector3(0f, -0.10f, 0f), new Vector3(0.17f, 0.035f, 0.17f), accent, Quaternion.identity, false);
+                    Part("CoilRingHigh", PrimitiveType.Cylinder, root.transform, new Vector3(0f, 0.07f, 0f), new Vector3(0.15f, 0.035f, 0.15f), accent, Quaternion.identity, false);
                     Part("TrickBell", PrimitiveType.Sphere, root.transform, new Vector3(0f, -0.34f, 0f), new Vector3(0.14f, 0.07f, 0.14f), color, Quaternion.identity, false);
                     break;
 
@@ -205,16 +226,6 @@ namespace PogoDom.Runtime
         {
             var decoration = FindChild("PogoCosmeticDecoration");
             if (decoration != null) Destroy(decoration.gameObject);
-        }
-    }
-
-    internal static class PogoPrimitiveCompatibility
-    {
-        // Unity has no torus PrimitiveType. A thin cylinder gives a readable ring
-        // proxy in the procedural prototype while authored art will use real coils.
-        public static PrimitiveType TorusFallback(this PrimitiveType ignored)
-        {
-            return PrimitiveType.Cylinder;
         }
     }
 }

@@ -80,8 +80,6 @@ namespace PogoDom.Core
             GridPos pos;
             if (!TryFindSpawnPosition(state, kind, config, random, out pos)) return false;
 
-            // Direction is also rolled at spawn so an Arrow hidden inside a crate is
-            // fully deterministic before anybody reaches it.
             var arrowDirection = (Direction)random.NextInt((int)Direction.Up, (int)Direction.Left + 1);
             var containedPower = kind == PowerUpKind.MysteryCrate
                 ? MysteryCrateTable.Roll(config.MysteryCrateTableId, random)
@@ -104,11 +102,16 @@ namespace PogoDom.Core
 
         private static bool TryFindSpawnPosition(MatchState state, PowerUpKind kind, MatchConfig config, IRandomSource random, out GridPos position)
         {
+            if (kind == PowerUpKind.MysteryCrate && config.BehaviorVersion == RulesetBehaviorVersion.V2)
+                return TryFindFairMysteryCratePosition(state, config, random, out position);
+
+            // V1 historical contract: rejection sampling first, row-major fallback.
+            // Do not alter this branch; signed V1 replays depend on its RNG consumption.
             var attempts = Math.Max(64, state.Board.Count * 4);
             for (var i = 0; i < attempts; i++)
             {
                 var candidate = new GridPos(random.NextInt(0, state.Board.Width), random.NextInt(0, state.Board.Height));
-                if (state.ItemAt(candidate) != null || state.HazardAt(candidate) != null || IsPlayerAt(state, candidate)) continue;
+                if (!IsBaseSpawnCellFree(state, candidate)) continue;
                 if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance)) continue;
                 position = candidate;
                 return true;
@@ -119,7 +122,7 @@ namespace PogoDom.Core
                 for (var x = 0; x < state.Board.Width; x++)
                 {
                     var candidate = new GridPos(x, y);
-                    if (state.ItemAt(candidate) != null || state.HazardAt(candidate) != null || IsPlayerAt(state, candidate)) continue;
+                    if (!IsBaseSpawnCellFree(state, candidate)) continue;
                     if (kind == PowerUpKind.BankCrate && TooCloseToBank(state, candidate, config.MinimumBankCrateChebyshevDistance)) continue;
                     position = candidate;
                     return true;
@@ -128,6 +131,102 @@ namespace PogoDom.Core
 
             position = default;
             return false;
+        }
+
+        private static bool TryFindFairMysteryCratePosition(MatchState state, MatchConfig config, IRandomSource random, out GridPos position)
+        {
+            // V2 never relaxes player safety. It first asks for a separated crate
+            // that is contestable by at least two players, then relaxes contestability,
+            // then crate-to-crate spacing only if the board is too congested.
+            var candidates = new List<GridPos>();
+            CollectMysteryCandidates(state, config, requireContestability: true, requireCrateSeparation: true, candidates);
+            if (candidates.Count == 0)
+                CollectMysteryCandidates(state, config, requireContestability: false, requireCrateSeparation: true, candidates);
+            if (candidates.Count == 0)
+                CollectMysteryCandidates(state, config, requireContestability: false, requireCrateSeparation: false, candidates);
+
+            if (candidates.Count == 0)
+            {
+                position = default;
+                return false;
+            }
+
+            position = candidates[random.NextInt(0, candidates.Count)];
+            return true;
+        }
+
+        private static void CollectMysteryCandidates(
+            MatchState state,
+            MatchConfig config,
+            bool requireContestability,
+            bool requireCrateSeparation,
+            List<GridPos> candidates)
+        {
+            candidates.Clear();
+            for (var y = 0; y < state.Board.Height; y++)
+            {
+                for (var x = 0; x < state.Board.Width; x++)
+                {
+                    var candidate = new GridPos(x, y);
+                    if (!IsBaseSpawnCellFree(state, candidate)) continue;
+                    if (!IsSafeFromPlayers(state, candidate, config.MysteryCrateMinimumPlayerManhattanDistance)) continue;
+                    if (requireCrateSeparation && !IsSeparatedFromMysteryCrates(state, candidate, config.MysteryCrateMinimumCrateChebyshevDistance)) continue;
+                    if (requireContestability && !IsContestableByPlayers(state, candidate, config.MysteryCrateMaximumClosestPlayerDistanceGap)) continue;
+                    candidates.Add(candidate);
+                }
+            }
+        }
+
+        private static bool IsBaseSpawnCellFree(MatchState state, GridPos candidate)
+        {
+            return state.ItemAt(candidate) == null && state.HazardAt(candidate) == null && !IsPlayerAt(state, candidate);
+        }
+
+        private static bool IsSafeFromPlayers(MatchState state, GridPos candidate, int minimumDistance)
+        {
+            var required = Math.Max(1, minimumDistance);
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                if (Manhattan(state.Players[i].Position, candidate) < required)
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool IsSeparatedFromMysteryCrates(MatchState state, GridPos candidate, int minimumDistance)
+        {
+            var required = Math.Max(1, minimumDistance);
+            for (var i = 0; i < state.Items.Count; i++)
+            {
+                var item = state.Items[i];
+                if (item.Kind != PowerUpKind.MysteryCrate) continue;
+                if (Chebyshev(item.Position, candidate) < required)
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool IsContestableByPlayers(MatchState state, GridPos candidate, int maximumClosestGap)
+        {
+            if (state.Players.Count < 2) return true;
+
+            var closest = int.MaxValue;
+            var second = int.MaxValue;
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                var distance = Manhattan(state.Players[i].Position, candidate);
+                if (distance < closest)
+                {
+                    second = closest;
+                    closest = distance;
+                }
+                else if (distance < second)
+                {
+                    second = distance;
+                }
+            }
+
+            return second == int.MaxValue || second - closest <= Math.Max(0, maximumClosestGap);
         }
 
         private static bool IsPlayerAt(MatchState state, GridPos position)
@@ -143,11 +242,19 @@ namespace PogoDom.Core
             {
                 var item = state.Items[i];
                 if (item.Kind != PowerUpKind.BankCrate) continue;
-                var dx = Math.Abs(item.Position.X - candidate.X);
-                var dy = Math.Abs(item.Position.Y - candidate.Y);
-                if (Math.Max(dx, dy) < minimumDistance) return true;
+                if (Chebyshev(item.Position, candidate) < minimumDistance) return true;
             }
             return false;
+        }
+
+        private static int Manhattan(GridPos a, GridPos b)
+        {
+            return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
+        }
+
+        private static int Chebyshev(GridPos a, GridPos b)
+        {
+            return Math.Max(Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
         }
     }
 }

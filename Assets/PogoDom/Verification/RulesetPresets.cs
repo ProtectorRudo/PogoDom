@@ -69,6 +69,14 @@ namespace PogoDom.Verification
             return config;
         }
 
+        public static MatchConfig CratesV2()
+        {
+            var config = CratesV1();
+            // Same power economy as V1. Only the shared spawn behavior changes.
+            config.BehaviorVersion = RulesetBehaviorVersion.V2;
+            return config;
+        }
+
         private static MatchConfig BaseM02()
         {
             return new MatchConfig
@@ -89,6 +97,9 @@ namespace PogoDom.Verification
                 TargetMysteryCrates = 2,
                 MysteryCrateRespawnDelayTicks = 12,
                 MysteryCrateTableId = MysteryCrateTableId.PowerMixV1,
+                MysteryCrateMinimumPlayerManhattanDistance = 2,
+                MysteryCrateMinimumCrateChebyshevDistance = 2,
+                MysteryCrateMaximumClosestPlayerDistanceGap = 1,
                 EnableEnclosureCapture = false,
                 EnclosureCapturePolicy = EnclosureCapturePolicy.AllUnprotected,
                 EnableArenaChaos = false,

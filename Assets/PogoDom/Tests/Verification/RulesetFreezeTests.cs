@@ -25,6 +25,7 @@ namespace PogoDom.Tests.Verification
         public void LaunchM02IsExplicitlyFrozenToCertifiedValues()
         {
             var config = RulesetRegistry.CreateCurrent().Get("launch-m0-2").CreateConfig();
+            Assert.AreEqual(RulesetBehaviorVersion.V1, config.BehaviorVersion);
             Assert.AreEqual(8, config.BoardWidth);
             Assert.AreEqual(8, config.BoardHeight);
             Assert.AreEqual(0.5f, config.TickSeconds);
@@ -40,6 +41,24 @@ namespace PogoDom.Tests.Verification
             Assert.IsFalse(config.EnableEnclosureCapture);
             Assert.IsFalse(config.EnableArenaChaos);
             Assert.IsFalse(config.EnablePadlockPower);
+        }
+
+        [Test]
+        public void EveryPublishedRulesetPinsLegacyBehaviorV1()
+        {
+            var configs = new[]
+            {
+                RulesetPresets.LaunchM02(),
+                RulesetPresets.LoopV1(),
+                RulesetPresets.LoopV2(),
+                RulesetPresets.ChaosV1(),
+                RulesetPresets.ChaosV2(),
+                RulesetPresets.PadlockV1(),
+                RulesetPresets.PadlockV2(),
+                RulesetPresets.CratesV1()
+            };
+            for (var i = 0; i < configs.Length; i++)
+                Assert.AreEqual(RulesetBehaviorVersion.V1, configs[i].BehaviorVersion, "Published behavior changed at index " + i);
         }
 
         [Test]

@@ -7,6 +7,7 @@ namespace PogoDom.Verification
     public sealed class RulesetDefinition
     {
         public string Id { get; }
+        public RulesetBehaviorVersion BehaviorVersion { get; }
         public int BoardWidth { get; }
         public int BoardHeight { get; }
         public float TickSeconds { get; }
@@ -46,6 +47,7 @@ namespace PogoDom.Verification
         {
             Id = TicketToken.Normalize(id, nameof(id));
             if (config == null) throw new ArgumentNullException(nameof(config));
+            BehaviorVersion = config.BehaviorVersion;
             BoardWidth = config.BoardWidth; BoardHeight = config.BoardHeight; TickSeconds = config.TickSeconds; MatchSeconds = config.MatchSeconds;
             TargetBankCrates = config.TargetBankCrates; TargetArrows = config.TargetArrows; TargetSpeedPickups = config.TargetSpeedPickups; TargetMissiles = config.TargetMissiles;
             MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance; ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks; BankThresholdForBots = config.BankThresholdForBots;
@@ -61,6 +63,7 @@ namespace PogoDom.Verification
         {
             return new MatchConfig
             {
+                BehaviorVersion = BehaviorVersion,
                 BoardWidth = BoardWidth, BoardHeight = BoardHeight, TickSeconds = TickSeconds, MatchSeconds = MatchSeconds,
                 TargetBankCrates = TargetBankCrates, TargetArrows = TargetArrows, TargetSpeedPickups = TargetSpeedPickups, TargetMissiles = TargetMissiles,
                 MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance, ArrowRotationIntervalTicks = ArrowRotationIntervalTicks, BankThresholdForBots = BankThresholdForBots,

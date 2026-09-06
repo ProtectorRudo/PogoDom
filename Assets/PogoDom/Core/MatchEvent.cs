@@ -17,6 +17,7 @@ namespace PogoDom.Core
         HazardTelegraphed,
         HazardDetonated,
         ItemSpawned,
+        CrateOpened,
         ItemConsumed,
         MatchFinished
     }

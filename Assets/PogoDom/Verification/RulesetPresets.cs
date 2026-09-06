@@ -33,8 +33,8 @@ namespace PogoDom.Verification
         {
             var config = BaseM02();
             config.EnableArenaChaos = true;
-            config.TntInitialDelayTicks = 20;      // first warning at 10 s
-            config.TntSpawnIntervalTicks = 30;    // at most every 15 s
+            config.TntInitialDelayTicks = 20;
+            config.TntSpawnIntervalTicks = 30;
             return config;
         }
 
@@ -49,8 +49,25 @@ namespace PogoDom.Verification
         {
             var config = BaseM02();
             config.EnablePadlockPower = true;
-            config.PadlockDurationTicks = 10;      // 5 s instead of 8 s
-            config.PadlockRespawnDelayTicks = 24; // 12 s instead of 9 s
+            config.PadlockDurationTicks = 10;
+            config.PadlockRespawnDelayTicks = 24;
+            return config;
+        }
+
+        public static MatchConfig CratesV1()
+        {
+            var config = BaseM02();
+            // Preserve bank crates as the score-conversion hotspot, but replace
+            // loose combat pickups with a smaller number of mystery power crates.
+            config.TargetArrows = 0;
+            config.TargetSpeedPickups = 0;
+            config.TargetMissiles = 0;
+            config.EnablePadlockPower = true;
+            config.TargetPadlocks = 0;
+            config.EnableMysteryCrates = true;
+            config.TargetMysteryCrates = 2;
+            config.MysteryCrateRespawnDelayTicks = 12;
+            config.MysteryCrateTableId = MysteryCrateTableId.PowerMixV1;
             return config;
         }
 
@@ -69,6 +86,10 @@ namespace PogoDom.Verification
                 MinimumBankCrateChebyshevDistance = 2,
                 ArrowRotationIntervalTicks = 2,
                 BankThresholdForBots = 5,
+                EnableMysteryCrates = false,
+                TargetMysteryCrates = 2,
+                MysteryCrateRespawnDelayTicks = 12,
+                MysteryCrateTableId = MysteryCrateTableId.PowerMixV1,
                 EnableEnclosureCapture = false,
                 EnclosureCapturePolicy = EnclosureCapturePolicy.AllUnprotected,
                 EnableArenaChaos = false,

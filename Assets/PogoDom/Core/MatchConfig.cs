@@ -15,6 +15,12 @@ namespace PogoDom.Core
         public int ArrowRotationIntervalTicks { get; set; } = 2;
         public int BankThresholdForBots { get; set; } = 5;
 
+        // Experimental crate shell: powers are pre-rolled at spawn, hidden until pickup.
+        public bool EnableMysteryCrates { get; set; } = false;
+        public int TargetMysteryCrates { get; set; } = 2;
+        public int MysteryCrateRespawnDelayTicks { get; set; } = 12;
+        public MysteryCrateTableId MysteryCrateTableId { get; set; } = MysteryCrateTableId.PowerMixV1;
+
         public bool EnableEnclosureCapture { get; set; } = false;
         public EnclosureCapturePolicy EnclosureCapturePolicy { get; set; } = EnclosureCapturePolicy.AllUnprotected;
 

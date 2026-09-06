@@ -4,21 +4,12 @@ using System.Collections.Generic;
 namespace PogoDom.Core
 {
     /// <summary>
-    /// Deterministic local-lookahead opponent. The design distills the useful
-    /// observation/reward ideas from the audited Squares RL environment into a
-    /// tiny offline policy: territory gain, score conversion, power-up value,
-    /// margin pressure and idle avoidance. No network or ML runtime is used.
+    /// Deterministic local-lookahead opponent. Distills useful observation/reward
+    /// ideas from the audited Squares RL environment without a network/ML runtime.
     /// </summary>
     public sealed class HardBotBrain : IBotBrain
     {
-        private static readonly Direction[] Directions =
-        {
-            Direction.Up,
-            Direction.Right,
-            Direction.Down,
-            Direction.Left
-        };
-
+        private static readonly Direction[] Directions = { Direction.Up, Direction.Right, Direction.Down, Direction.Left };
         private const int SearchDepth = 3;
         private const float FutureDiscount = 0.58f;
 
@@ -41,105 +32,51 @@ namespace PogoDom.Core
 
                 var path = new HashSet<GridPos> { bot.Position, next };
                 var score = ScoreNode(state, bot, bot.Position, next, direction, owned, leader, config, true);
-                score += FutureDiscount * SearchFuture(
-                    state,
-                    bot,
-                    next,
-                    direction,
-                    owned,
-                    leader,
-                    config,
-                    SearchDepth - 1,
-                    path);
-
-                // Deterministic tie-breaking keeps verified replays portable.
+                score += FutureDiscount * SearchFuture(state, bot, next, direction, owned, leader, config, SearchDepth - 1, path);
                 if (score > bestScore + 0.0001f)
                 {
                     bestScore = score;
                     bestDirection = direction;
                 }
             }
-
             return bestDirection == Direction.None ? bot.CurrentDirection : bestDirection;
         }
 
-        private static float SearchFuture(
-            MatchState state,
-            PlayerState bot,
-            GridPos position,
-            Direction incoming,
-            int owned,
-            PlayerState leader,
-            MatchConfig config,
-            int depth,
-            HashSet<GridPos> path)
+        private static float SearchFuture(MatchState state, PlayerState bot, GridPos position, Direction incoming, int owned, PlayerState leader, MatchConfig config, int depth, HashSet<GridPos> path)
         {
             if (depth <= 0) return 0f;
-
             var best = float.NegativeInfinity;
             for (var i = 0; i < Directions.Length; i++)
             {
                 var direction = Directions[i];
                 var next = state.Board.Step(position, direction);
                 if (next == position) continue;
-
                 var revisiting = path.Contains(next);
                 var score = ScoreNode(state, bot, position, next, direction, owned, leader, config, false);
                 if (revisiting) score -= 9f;
-
                 var added = !revisiting && path.Add(next);
-                score += FutureDiscount * SearchFuture(
-                    state,
-                    bot,
-                    next,
-                    direction,
-                    owned,
-                    leader,
-                    config,
-                    depth - 1,
-                    path);
+                score += FutureDiscount * SearchFuture(state, bot, next, direction, owned, leader, config, depth - 1, path);
                 if (added) path.Remove(next);
-
                 if (score > best) best = score;
             }
-
             return float.IsNegativeInfinity(best) ? 0f : best;
         }
 
-        private static float ScoreNode(
-            MatchState state,
-            PlayerState bot,
-            GridPos from,
-            GridPos next,
-            Direction direction,
-            int owned,
-            PlayerState leader,
-            MatchConfig config,
-            bool root)
+        private static float ScoreNode(MatchState state, PlayerState bot, GridPos from, GridPos next, Direction direction, int owned, PlayerState leader, MatchConfig config, bool root)
         {
             var owner = state.Board.OwnerAt(next);
             var protectedByRival = IsProtectedByRival(state, bot, owner);
             var score = 0f;
-
-            // Territory is the primary per-bounce reward, analogous to the useful
-            // NEW_SQUARE reward shaping discovered in the audited RL environment.
             if (owner == TileState.NeutralOwner) score += 10f;
             else if (owner != bot.Id && !protectedByRival) score += 12.5f;
             else if (protectedByRival) score -= 8f;
             else score += 0.35f;
 
-            if (owner >= 0 && owner != bot.Id && !protectedByRival && leader != null && owner == leader.Id)
-                score += 4.5f;
-
+            if (owner >= 0 && owner != bot.Id && !protectedByRival && leader != null && owner == leader.Id) score += 4.5f;
             if (root && config.EnableEnclosureCapture && owner != bot.Id && !protectedByRival)
             {
-                var enclosure = EnclosureResolver.PreviewCaptureCount(
-                    state.Board,
-                    bot.Id,
-                    next,
-                    config.EnclosureCapturePolicy);
-                if (enclosure > 0)
-                    score += Math.Min(42f, enclosure * 4.4f);
+                var enclosure = EnclosureResolver.PreviewCaptureCount(state.Board, bot.Id, next, config.EnclosureCapturePolicy);
+                if (enclosure > 0) score += Math.Min(42f, enclosure * 4.4f);
             }
 
             score += HazardScore(state, next);
@@ -148,26 +85,11 @@ namespace PogoDom.Core
             score += BankProgressScore(state, bot, from, next, owned, config);
 
             var item = state.ItemAt(next);
-            if (item != null)
-                score += ItemValue(item.Kind, owned, bot, leader, state, config);
-
-            if (direction == incomingDirection(bot, from, direction)) score += 0.15f;
+            if (item != null) score += ItemValue(item.Kind, owned, bot, leader, state, config);
             if (direction == bot.CurrentDirection) score += 0.9f;
             if (IsReverse(bot.CurrentDirection, direction)) score -= 0.75f;
-
-            // Late game: convert risky paint into banked score instead of dying with
-            // a large unbanked lead. This is the local equivalent of terminal win/margin shaping.
-            if (state.RemainingSeconds <= 15f && owned > 0)
-                score += BankProgressScore(state, bot, from, next, owned + 3, config);
-
+            if (state.RemainingSeconds <= 15f && owned > 0) score += BankProgressScore(state, bot, from, next, owned + 3, config);
             return score;
-        }
-
-        // Kept as a named helper so future movement models can replace the static
-        // direction assumption without touching the scoring policy.
-        private static Direction incomingDirection(PlayerState bot, GridPos from, Direction fallback)
-        {
-            return bot.Position == from ? bot.CurrentDirection : fallback;
         }
 
         private static float HazardScore(MatchState state, GridPos next)
@@ -187,11 +109,7 @@ namespace PogoDom.Core
         private static float OccupancyScore(MatchState state, PlayerState bot, GridPos next)
         {
             for (var i = 0; i < state.Players.Count; i++)
-            {
-                var other = state.Players[i];
-                if (other.Id != bot.Id && other.Position == next)
-                    return -24f;
-            }
+                if (state.Players[i].Id != bot.Id && state.Players[i].Position == next) return -24f;
             return 0f;
         }
 
@@ -201,22 +119,14 @@ namespace PogoDom.Core
             for (var i = 0; i < Directions.Length; i++)
             {
                 var adjacent = state.Board.Step(next, Directions[i]);
-                if (adjacent == next) continue;
-                if (state.Board.OwnerAt(adjacent) != bot.Id) frontier++;
+                if (adjacent != next && state.Board.OwnerAt(adjacent) != bot.Id) frontier++;
             }
             return frontier * 0.8f;
         }
 
-        private static float BankProgressScore(
-            MatchState state,
-            PlayerState bot,
-            GridPos from,
-            GridPos next,
-            int owned,
-            MatchConfig config)
+        private static float BankProgressScore(MatchState state, PlayerState bot, GridPos from, GridPos next, int owned, MatchConfig config)
         {
             if (owned <= 0) return 0f;
-
             ItemState nearest = null;
             var nearestDistance = int.MaxValue;
             for (var i = 0; i < state.Items.Count; i++)
@@ -224,50 +134,33 @@ namespace PogoDom.Core
                 var item = state.Items[i];
                 if (item.Kind != PowerUpKind.BankCrate) continue;
                 var distance = Manhattan(from, item.Position);
-                if (distance < nearestDistance)
-                {
-                    nearest = item;
-                    nearestDistance = distance;
-                }
+                if (distance < nearestDistance) { nearest = item; nearestDistance = distance; }
             }
-
             if (nearest == null) return 0f;
             var before = Manhattan(from, nearest.Position);
             var after = Manhattan(next, nearest.Position);
             if (before == after) return 0f;
-
             var urgent = owned >= config.BankThresholdForBots;
             var weight = urgent ? 4.2f + Math.Min(4f, owned * 0.25f) : 0.65f;
             return (before - after) * weight;
         }
 
-        private static float ItemValue(
-            PowerUpKind kind,
-            int owned,
-            PlayerState bot,
-            PlayerState leader,
-            MatchState state,
-            MatchConfig config)
+        private static float ItemValue(PowerUpKind kind, int owned, PlayerState bot, PlayerState leader, MatchState state, MatchConfig config)
         {
             switch (kind)
             {
                 case PowerUpKind.BankCrate:
                 {
                     var late = state.RemainingSeconds <= 15f;
-                    if (owned >= config.BankThresholdForBots || late)
-                        return 18f + owned * 2.1f;
+                    if (owned >= config.BankThresholdForBots || late) return 18f + owned * 2.1f;
                     return owned > 0 ? 3f + owned * 0.7f : -1f;
                 }
-                case PowerUpKind.Missile:
-                    return leader != null && leader.Id != bot.Id ? 17f : 11f;
-                case PowerUpKind.Arrow:
-                    return 12f;
-                case PowerUpKind.Speed:
-                    return bot.HasSpeed ? 2f : 11f;
-                case PowerUpKind.Padlock:
-                    return bot.HasPadlock ? 1f : 8f + Math.Min(8f, owned * 0.6f);
-                default:
-                    return 0f;
+                case PowerUpKind.MysteryCrate: return 13f; // never inspect ContainedPower
+                case PowerUpKind.Missile: return leader != null && leader.Id != bot.Id ? 17f : 11f;
+                case PowerUpKind.Arrow: return 12f;
+                case PowerUpKind.Speed: return bot.HasSpeed ? 2f : 11f;
+                case PowerUpKind.Padlock: return bot.HasPadlock ? 1f : 8f + Math.Min(8f, owned * 0.6f);
+                default: return 0f;
             }
         }
 
@@ -278,17 +171,11 @@ namespace PogoDom.Core
             return defender != null && defender.HasPadlock;
         }
 
-        private static int Manhattan(GridPos a, GridPos b)
-        {
-            return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
-        }
-
+        private static int Manhattan(GridPos a, GridPos b) => Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
         private static bool IsReverse(Direction a, Direction b)
         {
-            return (a == Direction.Up && b == Direction.Down) ||
-                   (a == Direction.Down && b == Direction.Up) ||
-                   (a == Direction.Left && b == Direction.Right) ||
-                   (a == Direction.Right && b == Direction.Left);
+            return (a == Direction.Up && b == Direction.Down) || (a == Direction.Down && b == Direction.Up) ||
+                   (a == Direction.Left && b == Direction.Right) || (a == Direction.Right && b == Direction.Left);
         }
     }
 }

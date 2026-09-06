@@ -12,7 +12,7 @@ permissions:
 jobs:
   certify-headless:
     runs-on: ubuntu-latest
-    timeout-minutes: 28
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,3 +63,7 @@ jobs:
           done
       - name: Certify hard bot local lookahead
         run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --difficulty-lab --matches 200 --seed 20260905 --assert
+      - name: Restore mystery crate lab
+        run: dotnet restore headless/PogoDom.CrateLab.csproj
+      - name: Certify mystery crate lifecycle
+        run: dotnet run --project headless/PogoDom.CrateLab.csproj --configuration Release -- --matches 200 --seed 20260906 --assert

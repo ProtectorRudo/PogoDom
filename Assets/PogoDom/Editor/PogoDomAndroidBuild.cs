@@ -24,7 +24,7 @@ namespace PogoDom.Editor
             Debug.Log("POGODOM Unity project prepared for Android. Scene: " + ScenePath);
         }
 
-        [MenuItem("PogoDom/Build/2 - Build Android APK (Development)")]
+        [MenuItem("PogoDom/Build/2 - Build Android APK (Device Preview)")]
         public static void BuildAndroidDevelopment()
         {
             EnsureAndroidBuildTarget();
@@ -38,7 +38,9 @@ namespace PogoDom.Editor
                 scenes = new[] { ScenePath },
                 locationPathName = ApkPath,
                 target = BuildTarget.Android,
-                options = BuildOptions.Development
+                // Device preview intentionally avoids Development mode: no in-game
+                // Development Console and no Development Build watermark on the phone.
+                options = BuildOptions.None
             };
 
             var report = BuildPipeline.BuildPlayer(options);
@@ -77,16 +79,16 @@ namespace PogoDom.Editor
         {
             PlayerSettings.companyName = "ProtectorRudo";
             PlayerSettings.productName = "POGODOM";
-            PlayerSettings.bundleVersion = "0.1.0";
+            PlayerSettings.bundleVersion = "0.1.1";
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.protectorrudo.pogodom");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
             PlayerSettings.colorSpace = ColorSpace.Linear;
-            PlayerSettings.Android.bundleVersionCode = 1;
+            PlayerSettings.Android.bundleVersionCode = 2;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel25;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
 
-            // The first device gate is an installable development APK, not a Play Store release.
-            // Keep the build simple and let the installed Unity Android toolchain choose its supported backend/SDK details.
+            // This gate is a clean installable device-preview APK, not a Play Store release.
+            // Keep the toolchain simple while making the on-phone presentation representative.
             EditorUserBuildSettings.buildAppBundle = false;
         }
 

@@ -124,6 +124,7 @@ namespace PogoDom.Tests.Verification
             AssertConfigsEqual(RulesetPresets.PadlockV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.PadlockV2));
             AssertConfigsEqual(RulesetPresets.ChaosV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.ChaosV2));
             AssertConfigsEqual(RulesetPresets.CratesV1(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.CratesV1));
+            AssertConfigsEqual(RulesetPresets.CratesV2(), PlaytestMatchProfiles.Create(PlaytestRulesetMode.CratesV2));
         }
 
         private static void AssertConfigsEqual(MatchConfig expected, MatchConfig actual)

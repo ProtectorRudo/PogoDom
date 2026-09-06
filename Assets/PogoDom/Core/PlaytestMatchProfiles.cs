@@ -8,7 +8,8 @@ namespace PogoDom.Core
         LoopV2 = 1,
         PadlockV2 = 2,
         ChaosV2 = 3,
-        CratesV1 = 4
+        CratesV1 = 4,
+        CratesV2 = 5
     }
 
     /// <summary>
@@ -44,20 +45,29 @@ namespace PogoDom.Core
                     return config;
 
                 case PlaytestRulesetMode.CratesV1:
-                    config.TargetArrows = 0;
-                    config.TargetSpeedPickups = 0;
-                    config.TargetMissiles = 0;
-                    config.EnablePadlockPower = true;
-                    config.TargetPadlocks = 0;
-                    config.EnableMysteryCrates = true;
-                    config.TargetMysteryCrates = 2;
-                    config.MysteryCrateRespawnDelayTicks = 12;
-                    config.MysteryCrateTableId = MysteryCrateTableId.PowerMixV1;
-                    return config;
+                    return ConfigureCrates(config, RulesetBehaviorVersion.V1);
+
+                case PlaytestRulesetMode.CratesV2:
+                    return ConfigureCrates(config, RulesetBehaviorVersion.V2);
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown playtest ruleset.");
             }
+        }
+
+        private static MatchConfig ConfigureCrates(MatchConfig config, RulesetBehaviorVersion behaviorVersion)
+        {
+            config.BehaviorVersion = behaviorVersion;
+            config.TargetArrows = 0;
+            config.TargetSpeedPickups = 0;
+            config.TargetMissiles = 0;
+            config.EnablePadlockPower = true;
+            config.TargetPadlocks = 0;
+            config.EnableMysteryCrates = true;
+            config.TargetMysteryCrates = 2;
+            config.MysteryCrateRespawnDelayTicks = 12;
+            config.MysteryCrateTableId = MysteryCrateTableId.PowerMixV1;
+            return config;
         }
     }
 }

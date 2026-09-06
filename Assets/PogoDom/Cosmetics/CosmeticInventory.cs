@@ -22,6 +22,9 @@ namespace PogoDom.Cosmetics
         public CosmeticId TrailId { get; internal set; }
         public CosmeticId LandingFxId { get; internal set; }
         public CosmeticId VictoryEmoteId { get; internal set; }
+        public CosmeticId HeadwearId { get; internal set; }
+        public CosmeticId BackAccessoryId { get; internal set; }
+        public CosmeticId AuraId { get; internal set; }
         public List<CosmeticId> SkillVisualIds { get; } = new List<CosmeticId>();
 
         public CosmeticLoadout(CosmeticId characterId, CosmeticId pogoId)
@@ -75,6 +78,9 @@ namespace PogoDom.Cosmetics
                 case CosmeticKind.Trail: loadout.TrailId = id; break;
                 case CosmeticKind.LandingFx: loadout.LandingFxId = id; break;
                 case CosmeticKind.VictoryEmote: loadout.VictoryEmoteId = id; break;
+                case CosmeticKind.Headwear: loadout.HeadwearId = id; break;
+                case CosmeticKind.BackAccessory: loadout.BackAccessoryId = id; break;
+                case CosmeticKind.Aura: loadout.AuraId = id; break;
                 default: throw new InvalidOperationException("Use the dedicated equip path for " + item.Kind + ".");
             }
         }

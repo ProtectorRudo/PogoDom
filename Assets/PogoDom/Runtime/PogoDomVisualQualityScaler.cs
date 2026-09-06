@@ -21,9 +21,11 @@ namespace PogoDom.Runtime
     public sealed class PogoDomVisualQualityScaler : MonoBehaviour
     {
         [SerializeField] private PogoVisualQualityMode mode = PogoVisualQualityMode.Auto;
+        private VisualQualityTier? _adaptiveOverride;
 
         public VisualQualityTier ActiveTier { get; private set; } = VisualQualityTier.Balanced;
         public VisualQualityBudget ActiveBudget => VisualQualityPolicy.Get(ActiveTier);
+        public bool IsAutoMode => mode == PogoVisualQualityMode.Auto;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoInstall()
@@ -56,9 +58,17 @@ namespace PogoDom.Runtime
 
             var renderers = GetComponentsInChildren<Renderer>(true);
             for (var i = 0; i < renderers.Length; i++)
-                ScaleOutline(renderers[i], budget.OutlineScale);
+                ScaleOutlineWithoutMaterialClone(renderers[i], budget.OutlineScale);
 
             ApplyDecoration(transform, budget);
+        }
+
+        public bool TryAdaptiveDowngrade()
+        {
+            if (!IsAutoMode || ActiveTier == VisualQualityTier.Lite) return false;
+            _adaptiveOverride = AdaptiveVisualQualityPolicy.NextLower(ActiveTier);
+            ApplyNow();
+            return true;
         }
 
         public int ScaleParticleBudget(int requested)
@@ -74,6 +84,7 @@ namespace PogoDom.Runtime
                 case PogoVisualQualityMode.Balanced: return VisualQualityTier.Balanced;
                 case PogoVisualQualityMode.Showcase: return VisualQualityTier.Showcase;
                 default:
+                    if (_adaptiveOverride.HasValue) return _adaptiveOverride.Value;
                     return VisualQualityPolicy.SelectAuto(
                         SystemInfo.graphicsMemorySize,
                         SystemInfo.systemMemorySize,
@@ -112,6 +123,11 @@ namespace PogoDom.Runtime
                         var index = NumericSuffix(objectName);
                         child.gameObject.SetActive(index < budget.MaxSkillOrbiters);
                     }
+                    else if (objectName.StartsWith("AuraOrb_"))
+                    {
+                        var index = NumericSuffix(objectName);
+                        child.gameObject.SetActive(index < budget.MaxAuraOrbiters);
+                    }
                 }
 
                 // Only recurse into active branches; disabled city decoration
@@ -121,16 +137,22 @@ namespace PogoDom.Runtime
             }
         }
 
-        private static void ScaleOutline(Renderer renderer, float scale)
+        private static void ScaleOutlineWithoutMaterialClone(Renderer renderer, float scale)
         {
             if (renderer == null) return;
-            var materials = renderer.materials;
+            var materials = renderer.sharedMaterials;
             for (var i = 0; i < materials.Length; i++)
             {
                 var material = materials[i];
                 if (material == null || !material.HasProperty("_OutlineWidth")) continue;
-                var width = material.GetFloat("_OutlineWidth");
-                material.SetFloat("_OutlineWidth", width * Mathf.Clamp01(scale));
+
+                // MaterialPropertyBlock preserves M0.43's shared toon-material
+                // pool. Calling renderer.material/materials here would clone it.
+                var block = new MaterialPropertyBlock();
+                renderer.GetPropertyBlock(block, i);
+                var authoredWidth = material.GetFloat("_OutlineWidth");
+                block.SetFloat("_OutlineWidth", authoredWidth * Mathf.Clamp01(scale));
+                renderer.SetPropertyBlock(block, i);
             }
         }
 

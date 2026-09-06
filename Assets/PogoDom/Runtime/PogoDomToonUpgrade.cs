@@ -35,7 +35,7 @@ namespace PogoDom.Runtime
             for (var i = 0; i < renderers.Length; i++)
             {
                 var renderer = renderers[i];
-                if (renderer == null || renderer.material == null) continue;
+                if (renderer == null || renderer.material == null || !ShouldToon(renderer.transform)) continue;
 
                 var source = renderer.material;
                 var color = ReadColor(source, Color.white);
@@ -48,10 +48,23 @@ namespace PogoDom.Runtime
                 replacement.SetFloat("_ShadowThreshold", 0.32f);
                 replacement.SetFloat("_ShadowSoftness", 0.075f);
                 replacement.SetFloat("_RimPower", 4.2f);
-                replacement.SetFloat("_RimStrength", IsAvatar(renderer.transform) ? 0.22f : 0.10f);
+                replacement.SetFloat("_RimStrength", IsAvatar(renderer.transform) ? 0.22f : 0.13f);
                 replacement.SetFloat("_OutlineWidth", OutlineWidth(renderer.transform));
                 renderer.material = replacement;
             }
+        }
+
+        private static bool ShouldToon(Transform target)
+        {
+            if (IsAvatar(target)) return true;
+            var n = target.name;
+            return n.StartsWith("MysteryCrate_") ||
+                   n.StartsWith("BankCrate_") ||
+                   n.StartsWith("Missile_") ||
+                   n.StartsWith("Speed_") ||
+                   n.StartsWith("Padlock_") ||
+                   n.StartsWith("Arrow_") ||
+                   n == "PickupHalo";
         }
 
         private static bool IsAvatar(Transform target)
@@ -68,11 +81,8 @@ namespace PogoDom.Runtime
         private static float OutlineWidth(Transform target)
         {
             if (IsAvatar(target)) return 0.014f;
-            var n = target.name;
-            if (n.StartsWith("MysteryCrate_") || n.StartsWith("BankCrate_") || n.StartsWith("Missile_") || n.StartsWith("Speed_") || n.StartsWith("Padlock_"))
-                return 0.010f;
-            if (n.StartsWith("BeaconCap_") || n.StartsWith("Skill")) return 0.007f;
-            return 0f;
+            if (target.name == "PickupHalo") return 0.004f;
+            return 0.010f;
         }
 
         private static Color ReadColor(Material material, Color fallback)

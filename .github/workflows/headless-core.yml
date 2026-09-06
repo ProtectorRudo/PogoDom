@@ -72,3 +72,12 @@ jobs:
             echo "===== crates-$variant ====="
             dotnet run --project headless/PogoDom.CrateLab.csproj --configuration Release -- --matches 200 --seed 20260906 --variant "$variant" --assert
           done
+      - name: Restore engagement dead-zone lab
+        run: dotnet restore headless/PogoDom.EngagementLab.csproj
+      - name: Measure 10s and 15s engagement dead zones
+        shell: bash
+        run: |
+          for variant in launch rivals loop2 chaos2 padlock2 crates2; do
+            echo "===== engagement-$variant ====="
+            dotnet run --project headless/PogoDom.EngagementLab.csproj --configuration Release -- --matches 150 --seed 20260906 --variant "$variant" --assert
+          done

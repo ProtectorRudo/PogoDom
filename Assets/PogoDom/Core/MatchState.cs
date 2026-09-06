@@ -7,6 +7,7 @@ namespace PogoDom.Core
         public BoardState Board { get; }
         public List<PlayerState> Players { get; }
         public List<ItemState> Items { get; }
+        public List<ArenaHazard> Hazards { get; }
         public int Tick { get; internal set; }
         public float RemainingSeconds { get; internal set; }
 
@@ -17,6 +18,7 @@ namespace PogoDom.Core
             Board = board;
             Players = players;
             Items = new List<ItemState>();
+            Hazards = new List<ArenaHazard>();
             RemainingSeconds = remainingSeconds;
         }
 
@@ -36,6 +38,16 @@ namespace PogoDom.Core
             {
                 if (Items[i].Position == position)
                     return Items[i];
+            }
+            return null;
+        }
+
+        public ArenaHazard HazardAt(GridPos position)
+        {
+            for (var i = 0; i < Hazards.Count; i++)
+            {
+                if (Hazards[i].Position == position)
+                    return Hazards[i];
             }
             return null;
         }

@@ -19,6 +19,13 @@ namespace PogoDom.Verification
         public int ArrowRotationIntervalTicks { get; }
         public int BankThresholdForBots { get; }
         public bool EnableEnclosureCapture { get; }
+        public bool EnableArenaChaos { get; }
+        public int TntInitialDelayTicks { get; }
+        public int TntSpawnIntervalTicks { get; }
+        public int TntFuseTicks { get; }
+        public int TntBlastRadius { get; }
+        public int TntStunTicks { get; }
+        public int MaxActiveTnt { get; }
         public int BankRespawnDelayTicks { get; }
         public int ArrowRespawnDelayTicks { get; }
         public int SpeedRespawnDelayTicks { get; }
@@ -42,6 +49,13 @@ namespace PogoDom.Verification
             ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks;
             BankThresholdForBots = config.BankThresholdForBots;
             EnableEnclosureCapture = config.EnableEnclosureCapture;
+            EnableArenaChaos = config.EnableArenaChaos;
+            TntInitialDelayTicks = config.TntInitialDelayTicks;
+            TntSpawnIntervalTicks = config.TntSpawnIntervalTicks;
+            TntFuseTicks = config.TntFuseTicks;
+            TntBlastRadius = config.TntBlastRadius;
+            TntStunTicks = config.TntStunTicks;
+            MaxActiveTnt = config.MaxActiveTnt;
             BankRespawnDelayTicks = config.BankRespawnDelayTicks;
             ArrowRespawnDelayTicks = config.ArrowRespawnDelayTicks;
             SpeedRespawnDelayTicks = config.SpeedRespawnDelayTicks;
@@ -66,6 +80,13 @@ namespace PogoDom.Verification
                 ArrowRotationIntervalTicks = ArrowRotationIntervalTicks,
                 BankThresholdForBots = BankThresholdForBots,
                 EnableEnclosureCapture = EnableEnclosureCapture,
+                EnableArenaChaos = EnableArenaChaos,
+                TntInitialDelayTicks = TntInitialDelayTicks,
+                TntSpawnIntervalTicks = TntSpawnIntervalTicks,
+                TntFuseTicks = TntFuseTicks,
+                TntBlastRadius = TntBlastRadius,
+                TntStunTicks = TntStunTicks,
+                MaxActiveTnt = MaxActiveTnt,
                 BankRespawnDelayTicks = BankRespawnDelayTicks,
                 ArrowRespawnDelayTicks = ArrowRespawnDelayTicks,
                 SpeedRespawnDelayTicks = SpeedRespawnDelayTicks,
@@ -97,12 +118,12 @@ namespace PogoDom.Verification
         {
             var registry = new RulesetRegistry();
             registry.Add(new RulesetDefinition("launch-m0-2", new MatchConfig()));
-
-            // Same battle tuning, one isolated mechanic changed. This gives us a clean
-            // A/B ruleset instead of mixing enclosure with unrelated balance changes.
             registry.Add(new RulesetDefinition(
                 "pogodom-loop-v1",
                 new MatchConfig { EnableEnclosureCapture = true }));
+            registry.Add(new RulesetDefinition(
+                "pogodom-chaos-v1",
+                new MatchConfig { EnableArenaChaos = true }));
             return registry;
         }
     }

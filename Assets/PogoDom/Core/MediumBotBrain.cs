@@ -74,6 +74,8 @@ namespace PogoDom.Core
                 }
             }
 
+            score += HazardSafetyScore(state, bot, next);
+
             var item = state.ItemAt(next);
             if (item != null)
             {
@@ -114,6 +116,24 @@ namespace PogoDom.Core
 
             var noise = bot.BotPersonality == BotPersonality.Chaotic ? 4.5f : 1.1f;
             score += random.NextFloat01() * noise;
+            return score;
+        }
+
+        private static float HazardSafetyScore(MatchState state, PlayerState bot, GridPos next)
+        {
+            var score = 0f;
+            for (var i = 0; i < state.Hazards.Count; i++)
+            {
+                var hazard = state.Hazards[i];
+                if (!hazard.Contains(next)) continue;
+
+                if (hazard.TicksRemaining <= 1)
+                    score -= bot.BotPersonality == BotPersonality.Chaotic ? 10f : 40f;
+                else if (hazard.TicksRemaining <= 2)
+                    score -= bot.BotPersonality == BotPersonality.Chaotic ? 4f : 18f;
+                else
+                    score -= 2f;
+            }
             return score;
         }
 

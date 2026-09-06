@@ -8,6 +8,7 @@ namespace PogoDom.Core
         private readonly IRandomSource _random;
         private readonly ItemSpawner _spawner;
         private readonly BotDirector _bots;
+        private readonly ArenaHazardDirector _hazards;
         private bool _finishEventSent;
 
         public MatchRunner(MatchConfig config, IRandomSource random)
@@ -16,12 +17,14 @@ namespace PogoDom.Core
             _random = random;
             _spawner = new ItemSpawner();
             _bots = new BotDirector();
+            _hazards = new ArenaHazardDirector();
         }
 
         public void Initialize(MatchState state)
         {
             var ignored = new List<MatchEvent>();
             _spawner.EnsurePopulation(state, _config, _random, ignored);
+            _hazards.Initialize(state, _config);
         }
 
         public TickResult Tick(MatchState state, IReadOnlyDictionary<int, Direction> externalDirections = null)
@@ -78,7 +81,11 @@ namespace PogoDom.Core
             }
 
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
+
+            // Existing status effects expire before a TNT explosion can apply a fresh
+            // one-bounce stun. The new stun therefore survives into the next tick.
             AdvanceStatusTimers(state);
+            _hazards.Update(state, _config, _random, result.Events);
 
             state.Tick++;
             state.RemainingSeconds -= _config.TickSeconds;
@@ -168,9 +175,6 @@ namespace PogoDom.Core
             MatchConfig config)
         {
             var anyDirectPaint = false;
-
-            // Phase A: all landing paints happen before any area-fill calculation.
-            // This prevents player-list order from deciding whether a loop exists.
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
@@ -199,8 +203,6 @@ namespace PogoDom.Core
             if (!config.EnableEnclosureCapture || !anyDirectPaint)
                 return;
 
-            // Phase B: every player sees the same post-paint board. Contested enclosed
-            // cells are intentionally left unchanged rather than resolved by player id.
             var captures = EnclosureResolver.CaptureSimultaneous(state.Board, state.Players);
             for (var i = 0; i < captures.Count; i++)
             {

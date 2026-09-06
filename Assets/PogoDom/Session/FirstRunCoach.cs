@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PogoDom.Core;
 
 namespace PogoDom.Session
@@ -39,6 +40,7 @@ namespace PogoDom.Session
         }
 
         public bool IsComplete => _banked || _elapsed >= MaximumCoachSeconds;
+        public float ElapsedSeconds => _elapsed;
 
         public CoachDirective Current
         {
@@ -54,12 +56,18 @@ namespace PogoDom.Session
         public void Observe(TickResult tick, float deltaSeconds)
         {
             if (tick == null) throw new ArgumentNullException(nameof(tick));
+            ObserveEvents(tick.Events, deltaSeconds);
+        }
+
+        public void ObserveEvents(IReadOnlyList<MatchEvent> events, float deltaSeconds)
+        {
+            if (events == null) throw new ArgumentNullException(nameof(events));
             if (deltaSeconds < 0f) throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
             _elapsed += deltaSeconds;
 
-            for (var i = 0; i < tick.Events.Count; i++)
+            for (var i = 0; i < events.Count; i++)
             {
-                var e = tick.Events[i];
+                var e = events[i];
                 if (e.PlayerId != _localPlayerId) continue;
 
                 if (e.Type == MatchEventType.PlayerMoved) _moved = true;

@@ -1,0 +1,15 @@
+{
+  "name": "PogoDom.Session.Tests",
+  "rootNamespace": "PogoDom.Tests.Session",
+  "references": ["PogoDom.Core", "PogoDom.Meta", "PogoDom.Session"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}

@@ -8,6 +8,10 @@ namespace PogoDom.Core
     public enum RulesetBehaviorVersion
     {
         V1 = 1,
-        V2 = 2
+        V2 = 2,
+        // V3 keeps V2 spawn semantics and introduces the adaptive rival brain
+        // for Medium bots. Historical V1/V2 replays remain byte-for-byte on
+        // their old decision path.
+        V3 = 3
     }
 }

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="PogoDom.Core.Headless.csproj" />
+    <ProjectReference Include="PogoDom.Meta.Headless.csproj" />
+    <Compile Include="../Assets/PogoDom/Session/**/*.cs" />
+  </ItemGroup>
+</Project>

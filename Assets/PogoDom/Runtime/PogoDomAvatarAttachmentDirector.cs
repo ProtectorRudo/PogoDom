@@ -6,8 +6,8 @@ namespace PogoDom.Runtime
 {
     /// <summary>
     /// Gives each avatar a complete launch identity kit: headwear, back piece,
-    /// aura, trail signature and landing signature. All geometry is presentation
-    /// only and is attached below the already-neutral gameplay player root.
+    /// aura, trail signature and landing signature. Everything stays below the
+    /// neutral gameplay player root and owns no competitive state.
     /// </summary>
     [DefaultExecutionOrder(1120)]
     [DisallowMultipleComponent]
@@ -35,8 +35,7 @@ namespace PogoDom.Runtime
 
         private IEnumerator Start()
         {
-            // ViralVisualDirector creates/initializes PogoAvatarVisualRig after the
-            // greybox. Give that layer two frames before attaching cosmetic parts.
+            // ViralVisualDirector initializes the avatar rig after the greybox.
             yield return null;
             yield return null;
             DecorateNow();
@@ -61,7 +60,7 @@ namespace PogoDom.Runtime
 
                 var visual = player.GetComponent<PogoAvatarAttachmentVisual>();
                 if (visual == null) visual = player.gameObject.AddComponent<PogoAvatarAttachmentVisual>();
-                visual.Initialize(i, PlayerColors[i], rig, AvatarAttachmentVisualProfiles.ForStyle(i));
+                visual.Initialize(PlayerColors[i], rig, AvatarAttachmentVisualProfiles.ForStyle(i));
             }
         }
 
@@ -77,11 +76,8 @@ namespace PogoDom.Runtime
     public sealed class PogoAvatarAttachmentVisual : MonoBehaviour
     {
         private bool _initialized;
-        private Transform _headRoot;
-        private Transform _backRoot;
-        private Transform _auraRoot;
 
-        public void Initialize(int styleIndex, Color playerColor, PogoAvatarVisualRig rig, AvatarAttachmentVisualProfile profile)
+        public void Initialize(Color playerColor, PogoAvatarVisualRig rig, AvatarAttachmentVisualProfile profile)
         {
             if (_initialized || rig == null || profile == null) return;
             _initialized = true;
@@ -89,16 +85,16 @@ namespace PogoDom.Runtime
             DisablePrototypeDecoration(rig.HeadwearSocket);
             DisablePrototypeDecoration(rig.BackSocket);
 
-            _headRoot = Anchor("EquippedHeadwear", rig.HeadwearSocket);
-            _headRoot.localScale = Vector3.one * profile.HeadwearScale;
-            _backRoot = Anchor("EquippedBack", rig.BackSocket);
-            _backRoot.localScale = Vector3.one * profile.BackScale;
-            _auraRoot = Anchor("EquippedAura", transform);
-            _auraRoot.localPosition = new Vector3(0f, 0.42f, 0f);
+            var headRoot = Anchor("EquippedHeadwear", rig.HeadwearSocket);
+            headRoot.localScale = Vector3.one * profile.HeadwearScale;
+            var backRoot = Anchor("EquippedBack", rig.BackSocket);
+            backRoot.localScale = Vector3.one * profile.BackScale;
+            var auraRoot = Anchor("EquippedAura", transform);
+            auraRoot.localPosition = new Vector3(0f, 0.42f, 0f);
 
-            BuildHeadwear(profile.Headwear, _headRoot, playerColor);
-            BuildBack(profile.Back, _backRoot, playerColor);
-            BuildAura(profile.Aura, _auraRoot, playerColor, profile.AuraRadius);
+            BuildHeadwear(profile.Headwear, headRoot, playerColor);
+            BuildBack(profile.Back, backRoot, playerColor);
+            BuildAura(profile.Aura, auraRoot, playerColor, profile.AuraRadius);
             ConfigureTrail(rig, profile, playerColor);
             ConfigureLanding(rig, profile, playerColor);
         }
@@ -171,17 +167,16 @@ namespace PogoDom.Runtime
 
         private static void BuildAura(AuraVisualFamily family, Transform root, Color color, float radius)
         {
-            var orbiters = family == AuraVisualFamily.HexPulse ? 6 : family == AuraVisualFamily.BubbleOrbit ? 4 : 3;
-            for (var i = 0; i < orbiters; i++)
+            var count = family == AuraVisualFamily.HexPulse ? 6 : family == AuraVisualFamily.BubbleOrbit ? 4 : 3;
+            for (var i = 0; i < count; i++)
             {
-                var angle = i * Mathf.PI * 2f / orbiters;
+                var angle = i * Mathf.PI * 2f / count;
                 var y = family == AuraVisualFamily.SplitOrbit && i % 2 == 0 ? 0.16f : 0f;
                 var orb = Part("AuraOrb_" + i, PrimitiveType.Sphere, root,
                     new Vector3(Mathf.Cos(angle) * radius, y, Mathf.Sin(angle) * radius),
                     Vector3.one * (family == AuraVisualFamily.BubbleOrbit ? 0.075f : 0.055f),
                     PogoVisualMaterialFactory.Accent(color), Quaternion.identity, true);
-                var motion = orb.AddComponent<PogoAuraOrbMotion>();
-                motion.Initialize(angle, radius, family);
+                orb.AddComponent<PogoAuraOrbMotion>().Initialize(angle, radius, family);
             }
         }
 
@@ -233,10 +228,7 @@ namespace PogoDom.Runtime
         {
             if (root == null) return;
             for (var i = 0; i < root.childCount; i++)
-            {
-                var child = root.GetChild(i);
-                if (child.name.StartsWith("Prototype")) child.gameObject.SetActive(false);
-            }
+                if (root.GetChild(i).name.StartsWith("Prototype")) root.GetChild(i).gameObject.SetActive(false);
         }
     }
 
@@ -271,6 +263,7 @@ namespace PogoDom.Runtime
         private Color _color;
         private float _targetRadius;
         private float _pulse;
+        private float _restHeight;
         private float _previousHeight;
         private bool _initialized;
 
@@ -281,7 +274,8 @@ namespace PogoDom.Runtime
             _family = family;
             _color = color;
             _targetRadius = targetRadius;
-            _previousHeight = transform.position.y;
+            _restHeight = transform.position.y;
+            _previousHeight = _restHeight;
 
             var go = new GameObject("LandingSignatureRing");
             go.transform.SetParent(transform, false);
@@ -304,8 +298,8 @@ namespace PogoDom.Runtime
         {
             if (!_initialized) return;
             var height = transform.position.y;
-            var descendingAcrossGround = _previousHeight > 0.16f && height <= 0.13f;
-            if (descendingAcrossGround) _pulse = 1f;
+            var descendingAcrossRest = _previousHeight > _restHeight + 0.10f && height <= _restHeight + 0.06f;
+            if (descendingAcrossRest) _pulse = 1f;
             _previousHeight = height;
 
             if (_pulse <= 0f || _ring == null) return;

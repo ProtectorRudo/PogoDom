@@ -36,7 +36,10 @@ namespace PogoDom.Cosmetics
         Trail = 2,
         LandingFx = 3,
         VictoryEmote = 4,
-        SkillVisual = 5
+        SkillVisual = 5,
+        Headwear = 6,
+        BackAccessory = 7,
+        Aura = 8
     }
 
     public enum SkillVisualTrigger

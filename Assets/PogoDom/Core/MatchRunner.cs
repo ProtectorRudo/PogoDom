@@ -37,12 +37,10 @@ namespace PogoDom.Core
             }
 
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
-
             for (var i = 0; i < state.Players.Count; i++)
                 PowerUpResolver.ApplyItemUnderPlayer(state, state.Players[i], _config, result.Events);
 
             PaintPlayers(state, state.Players, result.Events, _config);
-
             var desired = ResolveDirections(state, externalDirections);
             RunMovementPhase(state, desired, result, 1);
 
@@ -50,23 +48,18 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
-                if (player.HasSpeed && !player.IsStunned)
-                    speedPlayers.Add(player);
+                if (player.HasSpeed && !player.IsStunned) speedPlayers.Add(player);
             }
 
             if (speedPlayers.Count > 0)
             {
                 for (var i = 0; i < speedPlayers.Count; i++)
                     PowerUpResolver.ApplyItemUnderPlayer(state, speedPlayers[i], _config, result.Events);
-
                 PaintPlayers(state, speedPlayers, result.Events, _config);
 
                 var speedDirections = new Dictionary<int, Direction>();
-                for (var i = 0; i < state.Players.Count; i++)
-                    speedDirections[state.Players[i].Id] = Direction.None;
-                for (var i = 0; i < speedPlayers.Count; i++)
-                    speedDirections[speedPlayers[i].Id] = speedPlayers[i].CurrentDirection;
-
+                for (var i = 0; i < state.Players.Count; i++) speedDirections[state.Players[i].Id] = Direction.None;
+                for (var i = 0; i < speedPlayers.Count; i++) speedDirections[speedPlayers[i].Id] = speedPlayers[i].CurrentDirection;
                 RunMovementPhase(state, speedDirections, result, 2);
             }
 
@@ -75,26 +68,18 @@ namespace PogoDom.Core
                 for (var i = 0; i < state.Items.Count; i++)
                 {
                     var item = state.Items[i];
-                    if (item.Kind == PowerUpKind.Arrow)
-                        item.ArrowDirection = ArrowResolver.RotateClockwise(item.ArrowDirection);
+                    if (item.Kind == PowerUpKind.Arrow) item.ArrowDirection = ArrowResolver.RotateClockwise(item.ArrowDirection);
                 }
             }
 
             _spawner.EnsurePopulation(state, _config, _random, result.Events);
-
-            // Existing status effects expire before a TNT explosion can apply a fresh
-            // one-bounce stun. The new stun therefore survives into the next tick.
             AdvanceStatusTimers(state);
             _hazards.Update(state, _config, _random, result.Events);
 
             state.Tick++;
             state.RemainingSeconds -= _config.TickSeconds;
-            if (state.RemainingSeconds < 0f)
-                state.RemainingSeconds = 0f;
-
-            if (state.IsFinished)
-                EmitFinishOnce(result);
-
+            if (state.RemainingSeconds < 0f) state.RemainingSeconds = 0f;
+            if (state.IsFinished) EmitFinishOnce(result);
             return result;
         }
 
@@ -114,17 +99,11 @@ namespace PogoDom.Core
                 if (player.IsHuman)
                 {
                     Direction supplied;
-                    direction = externalDirections != null && externalDirections.TryGetValue(player.Id, out supplied)
-                        ? supplied
-                        : player.CurrentDirection;
+                    direction = externalDirections != null && externalDirections.TryGetValue(player.Id, out supplied) ? supplied : player.CurrentDirection;
                 }
-                else
-                {
-                    direction = _bots.ChooseDirection(state, player, _config, _random);
-                }
+                else direction = _bots.ChooseDirection(state, player, _config, _random);
 
-                if (direction != Direction.None)
-                    player.CurrentDirection = direction;
+                if (direction != Direction.None) player.CurrentDirection = direction;
                 desired[player.Id] = direction;
             }
             return desired;
@@ -138,84 +117,60 @@ namespace PogoDom.Core
                 var player = state.Players[i];
                 Direction intent;
                 var hasIntent = directions.TryGetValue(player.Id, out intent) && intent != Direction.None;
-                if (!hasIntent)
-                    continue;
+                if (!hasIntent) continue;
 
                 var from = player.Position;
                 var to = resolved[player.Id];
-
-                if (!result.FromPositions.ContainsKey(player.Id))
-                    result.FromPositions[player.Id] = from;
-
+                if (!result.FromPositions.ContainsKey(player.Id)) result.FromPositions[player.Id] = from;
                 player.Position = to;
                 result.ToPositions[player.Id] = to;
                 result.MovementSteps.Add(new MovementStep(player.Id, from, to, phase));
-
-                result.Events.Add(new MatchEvent(
-                    from == to ? MatchEventType.PlayerBlocked : MatchEventType.PlayerMoved,
-                    player.Id,
-                    to,
-                    phase));
+                result.Events.Add(new MatchEvent(from == to ? MatchEventType.PlayerBlocked : MatchEventType.PlayerMoved, player.Id, to, phase));
             }
 
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
-                if (!result.ToPositions.ContainsKey(player.Id))
-                    result.ToPositions[player.Id] = player.Position;
-                if (!result.FromPositions.ContainsKey(player.Id))
-                    result.FromPositions[player.Id] = player.Position;
+                if (!result.ToPositions.ContainsKey(player.Id)) result.ToPositions[player.Id] = player.Position;
+                if (!result.FromPositions.ContainsKey(player.Id)) result.FromPositions[player.Id] = player.Position;
             }
         }
 
-        private static void PaintPlayers(
-            MatchState state,
-            IReadOnlyList<PlayerState> players,
-            List<MatchEvent> events,
-            MatchConfig config)
+        private static void PaintPlayers(MatchState state, IReadOnlyList<PlayerState> players, List<MatchEvent> events, MatchConfig config)
         {
             var anyDirectPaint = false;
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
                 var previousOwner = state.Board.OwnerAt(player.Position);
-                if (previousOwner == player.Id)
-                    continue;
+                if (previousOwner == player.Id) continue;
+
+                if (previousOwner >= 0)
+                {
+                    var defender = state.PlayerById(previousOwner);
+                    if (defender != null && defender.HasPadlock)
+                    {
+                        events.Add(new MatchEvent(MatchEventType.TileProtected, player.Id, player.Position, 1, PowerUpKind.Padlock, defender.Id));
+                        continue;
+                    }
+                }
 
                 anyDirectPaint = true;
                 state.Board.SetOwner(player.Position, player.Id);
                 if (previousOwner >= 0)
-                {
-                    events.Add(new MatchEvent(
-                        MatchEventType.TileStolen,
-                        player.Id,
-                        player.Position,
-                        1,
-                        PowerUpKind.None,
-                        previousOwner));
-                }
+                    events.Add(new MatchEvent(MatchEventType.TileStolen, player.Id, player.Position, 1, PowerUpKind.None, previousOwner));
                 else
-                {
                     events.Add(new MatchEvent(MatchEventType.TilePainted, player.Id, player.Position, 1));
-                }
             }
 
-            if (!config.EnableEnclosureCapture || !anyDirectPaint)
-                return;
-
+            if (!config.EnableEnclosureCapture || !anyDirectPaint) return;
             var captures = EnclosureResolver.CaptureSimultaneous(state.Board, state.Players);
             for (var i = 0; i < captures.Count; i++)
             {
                 var capture = captures[i];
                 if (capture.Count == 0) continue;
-
                 var player = state.PlayerById(capture.PlayerId);
-                var pos = player == null ? default : player.Position;
-                events.Add(new MatchEvent(
-                    MatchEventType.EnclosureCaptured,
-                    capture.PlayerId,
-                    pos,
-                    capture.Count));
+                events.Add(new MatchEvent(MatchEventType.EnclosureCaptured, capture.PlayerId, player == null ? default : player.Position, capture.Count));
             }
         }
 
@@ -224,17 +179,15 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var player = state.Players[i];
-                if (player.StunTicksRemaining > 0)
-                    player.StunTicksRemaining--;
-                if (player.SpeedTicksRemaining > 0)
-                    player.SpeedTicksRemaining--;
+                if (player.StunTicksRemaining > 0) player.StunTicksRemaining--;
+                if (player.SpeedTicksRemaining > 0) player.SpeedTicksRemaining--;
+                if (player.PadlockTicksRemaining > 0) player.PadlockTicksRemaining--;
             }
         }
 
         private void EmitFinishOnce(TickResult result)
         {
-            if (_finishEventSent)
-                return;
+            if (_finishEventSent) return;
             _finishEventSent = true;
             result.Events.Add(new MatchEvent(MatchEventType.MatchFinished));
         }

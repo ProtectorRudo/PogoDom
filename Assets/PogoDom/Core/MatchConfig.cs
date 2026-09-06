@@ -17,20 +17,25 @@ namespace PogoDom.Core
 
         public bool EnableEnclosureCapture { get; set; } = false;
 
-        // Experimental neutral chaos. TNT is telegraphed before it clears only UNBANKED
-        // territory; confirmed score can never be lost. A caught player misses one bounce.
         public bool EnableArenaChaos { get; set; } = false;
-        public int TntInitialDelayTicks { get; set; } = 12;       // 6 s before first warning
-        public int TntSpawnIntervalTicks { get; set; } = 16;      // at most one new warning every 8 s
-        public int TntFuseTicks { get; set; } = 4;                // 2 s visible warning
-        public int TntBlastRadius { get; set; } = 1;              // 3x3 footprint
-        public int TntStunTicks { get; set; } = 1;                // exactly one missed bounce
+        public int TntInitialDelayTicks { get; set; } = 12;
+        public int TntSpawnIntervalTicks { get; set; } = 16;
+        public int TntFuseTicks { get; set; } = 4;
+        public int TntBlastRadius { get; set; } = 1;
+        public int TntStunTicks { get; set; } = 1;
         public int MaxActiveTnt { get; set; } = 1;
 
-        public int BankRespawnDelayTicks { get; set; } = 6;      // 3 s
-        public int ArrowRespawnDelayTicks { get; set; } = 12;    // 6 s
-        public int SpeedRespawnDelayTicks { get; set; } = 14;    // 7 s
-        public int MissileRespawnDelayTicks { get; set; } = 16;  // 8 s
+        // Padlock is automatic on pickup. It protects the player's current unbanked
+        // territory from rival paint/arrow/area capture without adding a second button.
+        public bool EnablePadlockPower { get; set; } = false;
+        public int TargetPadlocks { get; set; } = 1;
+        public int PadlockDurationTicks { get; set; } = 16;        // 8 s
+        public int PadlockRespawnDelayTicks { get; set; } = 18;   // 9 s
+
+        public int BankRespawnDelayTicks { get; set; } = 6;
+        public int ArrowRespawnDelayTicks { get; set; } = 12;
+        public int SpeedRespawnDelayTicks { get; set; } = 14;
+        public int MissileRespawnDelayTicks { get; set; } = 16;
 
         public int SpeedDurationTicks { get; set; } = 16;
         public int MissileStunTicks { get; set; } = 4;

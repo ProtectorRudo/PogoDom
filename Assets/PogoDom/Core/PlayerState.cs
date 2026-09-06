@@ -13,11 +13,13 @@ namespace PogoDom.Core
         public int Score { get; internal set; }
         public int StunTicksRemaining { get; internal set; }
         public int SpeedTicksRemaining { get; internal set; }
+        public int PadlockTicksRemaining { get; internal set; }
         public BotDifficulty BotDifficulty { get; internal set; }
         public BotPersonality BotPersonality { get; internal set; }
 
         public bool IsStunned => StunTicksRemaining > 0;
         public bool HasSpeed => SpeedTicksRemaining > 0;
+        public bool HasPadlock => PadlockTicksRemaining > 0;
 
         public PlayerState(
             int id,

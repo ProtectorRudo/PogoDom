@@ -4,6 +4,7 @@ namespace PogoDom.Core
     {
         TilePainted,
         TileStolen,
+        TileProtected,
         EnclosureCaptured,
         PlayerMoved,
         PlayerBlocked,
@@ -11,6 +12,7 @@ namespace PogoDom.Core
         ArrowUsed,
         SpeedActivated,
         MissileFired,
+        PadlockActivated,
         PlayerStunned,
         HazardTelegraphed,
         HazardDetonated,

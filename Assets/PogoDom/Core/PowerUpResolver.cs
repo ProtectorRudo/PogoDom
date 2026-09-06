@@ -5,15 +5,10 @@ namespace PogoDom.Core
 {
     public static class PowerUpResolver
     {
-        public static bool ApplyItemUnderPlayer(
-            MatchState state,
-            PlayerState player,
-            MatchConfig config,
-            List<MatchEvent> events)
+        public static bool ApplyItemUnderPlayer(MatchState state, PlayerState player, MatchConfig config, List<MatchEvent> events)
         {
             var item = state.ItemAt(player.Position);
-            if (item == null)
-                return false;
+            if (item == null) return false;
 
             switch (item.Kind)
             {
@@ -46,6 +41,12 @@ namespace PogoDom.Core
                     }
                     break;
                 }
+                case PowerUpKind.Padlock:
+                {
+                    player.PadlockTicksRemaining = Math.Max(player.PadlockTicksRemaining, config.PadlockDurationTicks);
+                    events.Add(new MatchEvent(MatchEventType.PadlockActivated, player.Id, player.Position, config.PadlockDurationTicks, item.Kind));
+                    break;
+                }
             }
 
             state.Items.Remove(item);
@@ -59,30 +60,21 @@ namespace PogoDom.Core
             for (var i = 0; i < state.Players.Count; i++)
             {
                 var candidate = state.Players[i];
-                if (candidate.Id == attacker.Id)
-                    continue;
-
-                if (best == null || IsBetterTarget(state, attacker, candidate, best))
-                    best = candidate;
+                if (candidate.Id == attacker.Id) continue;
+                if (best == null || IsBetterTarget(state, attacker, candidate, best)) best = candidate;
             }
             return best;
         }
 
         private static bool IsBetterTarget(MatchState state, PlayerState attacker, PlayerState candidate, PlayerState currentBest)
         {
-            if (candidate.Score != currentBest.Score)
-                return candidate.Score > currentBest.Score;
-
+            if (candidate.Score != currentBest.Score) return candidate.Score > currentBest.Score;
             var candidateTiles = state.Board.CountOwnedBy(candidate.Id);
             var bestTiles = state.Board.CountOwnedBy(currentBest.Id);
-            if (candidateTiles != bestTiles)
-                return candidateTiles > bestTiles;
-
+            if (candidateTiles != bestTiles) return candidateTiles > bestTiles;
             var candidateDistance = Manhattan(attacker.Position, candidate.Position);
             var bestDistance = Manhattan(attacker.Position, currentBest.Position);
-            if (candidateDistance != bestDistance)
-                return candidateDistance < bestDistance;
-
+            if (candidateDistance != bestDistance) return candidateDistance < bestDistance;
             return candidate.Id < currentBest.Id;
         }
 

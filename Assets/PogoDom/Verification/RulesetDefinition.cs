@@ -26,6 +26,10 @@ namespace PogoDom.Verification
         public int TntBlastRadius { get; }
         public int TntStunTicks { get; }
         public int MaxActiveTnt { get; }
+        public bool EnablePadlockPower { get; }
+        public int TargetPadlocks { get; }
+        public int PadlockDurationTicks { get; }
+        public int PadlockRespawnDelayTicks { get; }
         public int BankRespawnDelayTicks { get; }
         public int ArrowRespawnDelayTicks { get; }
         public int SpeedRespawnDelayTicks { get; }
@@ -37,62 +41,28 @@ namespace PogoDom.Verification
         {
             Id = TicketToken.Normalize(id, nameof(id));
             if (config == null) throw new ArgumentNullException(nameof(config));
-            BoardWidth = config.BoardWidth;
-            BoardHeight = config.BoardHeight;
-            TickSeconds = config.TickSeconds;
-            MatchSeconds = config.MatchSeconds;
-            TargetBankCrates = config.TargetBankCrates;
-            TargetArrows = config.TargetArrows;
-            TargetSpeedPickups = config.TargetSpeedPickups;
-            TargetMissiles = config.TargetMissiles;
-            MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance;
-            ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks;
-            BankThresholdForBots = config.BankThresholdForBots;
+            BoardWidth = config.BoardWidth; BoardHeight = config.BoardHeight; TickSeconds = config.TickSeconds; MatchSeconds = config.MatchSeconds;
+            TargetBankCrates = config.TargetBankCrates; TargetArrows = config.TargetArrows; TargetSpeedPickups = config.TargetSpeedPickups; TargetMissiles = config.TargetMissiles;
+            MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance; ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks; BankThresholdForBots = config.BankThresholdForBots;
             EnableEnclosureCapture = config.EnableEnclosureCapture;
-            EnableArenaChaos = config.EnableArenaChaos;
-            TntInitialDelayTicks = config.TntInitialDelayTicks;
-            TntSpawnIntervalTicks = config.TntSpawnIntervalTicks;
-            TntFuseTicks = config.TntFuseTicks;
-            TntBlastRadius = config.TntBlastRadius;
-            TntStunTicks = config.TntStunTicks;
-            MaxActiveTnt = config.MaxActiveTnt;
-            BankRespawnDelayTicks = config.BankRespawnDelayTicks;
-            ArrowRespawnDelayTicks = config.ArrowRespawnDelayTicks;
-            SpeedRespawnDelayTicks = config.SpeedRespawnDelayTicks;
-            MissileRespawnDelayTicks = config.MissileRespawnDelayTicks;
-            SpeedDurationTicks = config.SpeedDurationTicks;
-            MissileStunTicks = config.MissileStunTicks;
+            EnableArenaChaos = config.EnableArenaChaos; TntInitialDelayTicks = config.TntInitialDelayTicks; TntSpawnIntervalTicks = config.TntSpawnIntervalTicks; TntFuseTicks = config.TntFuseTicks; TntBlastRadius = config.TntBlastRadius; TntStunTicks = config.TntStunTicks; MaxActiveTnt = config.MaxActiveTnt;
+            EnablePadlockPower = config.EnablePadlockPower; TargetPadlocks = config.TargetPadlocks; PadlockDurationTicks = config.PadlockDurationTicks; PadlockRespawnDelayTicks = config.PadlockRespawnDelayTicks;
+            BankRespawnDelayTicks = config.BankRespawnDelayTicks; ArrowRespawnDelayTicks = config.ArrowRespawnDelayTicks; SpeedRespawnDelayTicks = config.SpeedRespawnDelayTicks; MissileRespawnDelayTicks = config.MissileRespawnDelayTicks;
+            SpeedDurationTicks = config.SpeedDurationTicks; MissileStunTicks = config.MissileStunTicks;
         }
 
         public MatchConfig CreateConfig()
         {
             return new MatchConfig
             {
-                BoardWidth = BoardWidth,
-                BoardHeight = BoardHeight,
-                TickSeconds = TickSeconds,
-                MatchSeconds = MatchSeconds,
-                TargetBankCrates = TargetBankCrates,
-                TargetArrows = TargetArrows,
-                TargetSpeedPickups = TargetSpeedPickups,
-                TargetMissiles = TargetMissiles,
-                MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance,
-                ArrowRotationIntervalTicks = ArrowRotationIntervalTicks,
-                BankThresholdForBots = BankThresholdForBots,
+                BoardWidth = BoardWidth, BoardHeight = BoardHeight, TickSeconds = TickSeconds, MatchSeconds = MatchSeconds,
+                TargetBankCrates = TargetBankCrates, TargetArrows = TargetArrows, TargetSpeedPickups = TargetSpeedPickups, TargetMissiles = TargetMissiles,
+                MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance, ArrowRotationIntervalTicks = ArrowRotationIntervalTicks, BankThresholdForBots = BankThresholdForBots,
                 EnableEnclosureCapture = EnableEnclosureCapture,
-                EnableArenaChaos = EnableArenaChaos,
-                TntInitialDelayTicks = TntInitialDelayTicks,
-                TntSpawnIntervalTicks = TntSpawnIntervalTicks,
-                TntFuseTicks = TntFuseTicks,
-                TntBlastRadius = TntBlastRadius,
-                TntStunTicks = TntStunTicks,
-                MaxActiveTnt = MaxActiveTnt,
-                BankRespawnDelayTicks = BankRespawnDelayTicks,
-                ArrowRespawnDelayTicks = ArrowRespawnDelayTicks,
-                SpeedRespawnDelayTicks = SpeedRespawnDelayTicks,
-                MissileRespawnDelayTicks = MissileRespawnDelayTicks,
-                SpeedDurationTicks = SpeedDurationTicks,
-                MissileStunTicks = MissileStunTicks
+                EnableArenaChaos = EnableArenaChaos, TntInitialDelayTicks = TntInitialDelayTicks, TntSpawnIntervalTicks = TntSpawnIntervalTicks, TntFuseTicks = TntFuseTicks, TntBlastRadius = TntBlastRadius, TntStunTicks = TntStunTicks, MaxActiveTnt = MaxActiveTnt,
+                EnablePadlockPower = EnablePadlockPower, TargetPadlocks = TargetPadlocks, PadlockDurationTicks = PadlockDurationTicks, PadlockRespawnDelayTicks = PadlockRespawnDelayTicks,
+                BankRespawnDelayTicks = BankRespawnDelayTicks, ArrowRespawnDelayTicks = ArrowRespawnDelayTicks, SpeedRespawnDelayTicks = SpeedRespawnDelayTicks, MissileRespawnDelayTicks = MissileRespawnDelayTicks,
+                SpeedDurationTicks = SpeedDurationTicks, MissileStunTicks = MissileStunTicks
             };
         }
     }
@@ -100,30 +70,16 @@ namespace PogoDom.Verification
     public sealed class RulesetRegistry
     {
         private readonly Dictionary<string, RulesetDefinition> _rulesets = new Dictionary<string, RulesetDefinition>(StringComparer.Ordinal);
-
-        public void Add(RulesetDefinition ruleset)
-        {
-            if (ruleset == null) throw new ArgumentNullException(nameof(ruleset));
-            _rulesets.Add(ruleset.Id, ruleset);
-        }
-
-        public RulesetDefinition Get(string id)
-        {
-            RulesetDefinition value;
-            if (!_rulesets.TryGetValue(id, out value)) return null;
-            return value;
-        }
+        public void Add(RulesetDefinition ruleset) { if (ruleset == null) throw new ArgumentNullException(nameof(ruleset)); _rulesets.Add(ruleset.Id, ruleset); }
+        public RulesetDefinition Get(string id) { RulesetDefinition value; return _rulesets.TryGetValue(id, out value) ? value : null; }
 
         public static RulesetRegistry CreateCurrent()
         {
             var registry = new RulesetRegistry();
             registry.Add(new RulesetDefinition("launch-m0-2", new MatchConfig()));
-            registry.Add(new RulesetDefinition(
-                "pogodom-loop-v1",
-                new MatchConfig { EnableEnclosureCapture = true }));
-            registry.Add(new RulesetDefinition(
-                "pogodom-chaos-v1",
-                new MatchConfig { EnableArenaChaos = true }));
+            registry.Add(new RulesetDefinition("pogodom-loop-v1", new MatchConfig { EnableEnclosureCapture = true }));
+            registry.Add(new RulesetDefinition("pogodom-chaos-v1", new MatchConfig { EnableArenaChaos = true }));
+            registry.Add(new RulesetDefinition("pogodom-padlock-v1", new MatchConfig { EnablePadlockPower = true }));
             return registry;
         }
     }

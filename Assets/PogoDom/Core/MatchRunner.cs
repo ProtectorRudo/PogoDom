@@ -164,7 +164,7 @@ namespace PogoDom.Core
             }
 
             if (!config.EnableEnclosureCapture || !anyDirectPaint) return;
-            var captures = EnclosureResolver.CaptureSimultaneous(state.Board, state.Players);
+            var captures = EnclosureResolver.CaptureSimultaneous(state.Board, state.Players, config.EnclosureCapturePolicy);
             for (var i = 0; i < captures.Count; i++)
             {
                 var capture = captures[i];

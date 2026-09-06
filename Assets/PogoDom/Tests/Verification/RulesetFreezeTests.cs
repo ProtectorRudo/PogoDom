@@ -25,7 +25,6 @@ namespace PogoDom.Tests.Verification
         public void LaunchM02IsExplicitlyFrozenToCertifiedValues()
         {
             var config = RulesetRegistry.CreateCurrent().Get("launch-m0-2").CreateConfig();
-
             Assert.AreEqual(8, config.BoardWidth);
             Assert.AreEqual(8, config.BoardHeight);
             Assert.AreEqual(0.5f, config.TickSeconds);
@@ -36,6 +35,7 @@ namespace PogoDom.Tests.Verification
             Assert.AreEqual(1, config.TargetMissiles);
             Assert.AreEqual(16, config.SpeedDurationTicks);
             Assert.AreEqual(4, config.MissileStunTicks);
+            Assert.AreEqual(EnclosureCapturePolicy.AllUnprotected, config.EnclosureCapturePolicy);
             Assert.IsFalse(config.EnableEnclosureCapture);
             Assert.IsFalse(config.EnableArenaChaos);
             Assert.IsFalse(config.EnablePadlockPower);
@@ -48,6 +48,16 @@ namespace PogoDom.Tests.Verification
             AssertOnlyToggleDiffers(launch, RulesetPresets.LoopV1(), nameof(MatchConfig.EnableEnclosureCapture));
             AssertOnlyToggleDiffers(launch, RulesetPresets.ChaosV1(), nameof(MatchConfig.EnableArenaChaos));
             AssertOnlyToggleDiffers(launch, RulesetPresets.PadlockV1(), nameof(MatchConfig.EnablePadlockPower));
+        }
+
+        [Test]
+        public void V2CandidatesHaveExplicitNonV1Tuning()
+        {
+            Assert.AreEqual(EnclosureCapturePolicy.NeutralOnly, RulesetPresets.LoopV2().EnclosureCapturePolicy);
+            Assert.AreEqual(20, RulesetPresets.ChaosV2().TntInitialDelayTicks);
+            Assert.AreEqual(30, RulesetPresets.ChaosV2().TntSpawnIntervalTicks);
+            Assert.AreEqual(10, RulesetPresets.PadlockV2().PadlockDurationTicks);
+            Assert.AreEqual(24, RulesetPresets.PadlockV2().PadlockRespawnDelayTicks);
         }
 
         private static void AssertOnlyToggleDiffers(MatchConfig baseline, MatchConfig candidate, string expectedProperty)

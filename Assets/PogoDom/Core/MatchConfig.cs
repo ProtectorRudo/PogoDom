@@ -16,6 +16,7 @@ namespace PogoDom.Core
         public int BankThresholdForBots { get; set; } = 5;
 
         public bool EnableEnclosureCapture { get; set; } = false;
+        public EnclosureCapturePolicy EnclosureCapturePolicy { get; set; } = EnclosureCapturePolicy.AllUnprotected;
 
         public bool EnableArenaChaos { get; set; } = false;
         public int TntInitialDelayTicks { get; set; } = 12;
@@ -25,12 +26,10 @@ namespace PogoDom.Core
         public int TntStunTicks { get; set; } = 1;
         public int MaxActiveTnt { get; set; } = 1;
 
-        // Padlock is automatic on pickup. It protects the player's current unbanked
-        // territory from rival paint/arrow/area capture without adding a second button.
         public bool EnablePadlockPower { get; set; } = false;
         public int TargetPadlocks { get; set; } = 1;
-        public int PadlockDurationTicks { get; set; } = 16;        // 8 s
-        public int PadlockRespawnDelayTicks { get; set; } = 18;   // 9 s
+        public int PadlockDurationTicks { get; set; } = 16;
+        public int PadlockRespawnDelayTicks { get; set; } = 18;
 
         public int BankRespawnDelayTicks { get; set; } = 6;
         public int ArrowRespawnDelayTicks { get; set; } = 12;

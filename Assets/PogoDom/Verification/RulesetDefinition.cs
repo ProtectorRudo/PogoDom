@@ -19,6 +19,7 @@ namespace PogoDom.Verification
         public int ArrowRotationIntervalTicks { get; }
         public int BankThresholdForBots { get; }
         public bool EnableEnclosureCapture { get; }
+        public EnclosureCapturePolicy EnclosureCapturePolicy { get; }
         public bool EnableArenaChaos { get; }
         public int TntInitialDelayTicks { get; }
         public int TntSpawnIntervalTicks { get; }
@@ -44,7 +45,7 @@ namespace PogoDom.Verification
             BoardWidth = config.BoardWidth; BoardHeight = config.BoardHeight; TickSeconds = config.TickSeconds; MatchSeconds = config.MatchSeconds;
             TargetBankCrates = config.TargetBankCrates; TargetArrows = config.TargetArrows; TargetSpeedPickups = config.TargetSpeedPickups; TargetMissiles = config.TargetMissiles;
             MinimumBankCrateChebyshevDistance = config.MinimumBankCrateChebyshevDistance; ArrowRotationIntervalTicks = config.ArrowRotationIntervalTicks; BankThresholdForBots = config.BankThresholdForBots;
-            EnableEnclosureCapture = config.EnableEnclosureCapture;
+            EnableEnclosureCapture = config.EnableEnclosureCapture; EnclosureCapturePolicy = config.EnclosureCapturePolicy;
             EnableArenaChaos = config.EnableArenaChaos; TntInitialDelayTicks = config.TntInitialDelayTicks; TntSpawnIntervalTicks = config.TntSpawnIntervalTicks; TntFuseTicks = config.TntFuseTicks; TntBlastRadius = config.TntBlastRadius; TntStunTicks = config.TntStunTicks; MaxActiveTnt = config.MaxActiveTnt;
             EnablePadlockPower = config.EnablePadlockPower; TargetPadlocks = config.TargetPadlocks; PadlockDurationTicks = config.PadlockDurationTicks; PadlockRespawnDelayTicks = config.PadlockRespawnDelayTicks;
             BankRespawnDelayTicks = config.BankRespawnDelayTicks; ArrowRespawnDelayTicks = config.ArrowRespawnDelayTicks; SpeedRespawnDelayTicks = config.SpeedRespawnDelayTicks; MissileRespawnDelayTicks = config.MissileRespawnDelayTicks;
@@ -58,7 +59,7 @@ namespace PogoDom.Verification
                 BoardWidth = BoardWidth, BoardHeight = BoardHeight, TickSeconds = TickSeconds, MatchSeconds = MatchSeconds,
                 TargetBankCrates = TargetBankCrates, TargetArrows = TargetArrows, TargetSpeedPickups = TargetSpeedPickups, TargetMissiles = TargetMissiles,
                 MinimumBankCrateChebyshevDistance = MinimumBankCrateChebyshevDistance, ArrowRotationIntervalTicks = ArrowRotationIntervalTicks, BankThresholdForBots = BankThresholdForBots,
-                EnableEnclosureCapture = EnableEnclosureCapture,
+                EnableEnclosureCapture = EnableEnclosureCapture, EnclosureCapturePolicy = EnclosureCapturePolicy,
                 EnableArenaChaos = EnableArenaChaos, TntInitialDelayTicks = TntInitialDelayTicks, TntSpawnIntervalTicks = TntSpawnIntervalTicks, TntFuseTicks = TntFuseTicks, TntBlastRadius = TntBlastRadius, TntStunTicks = TntStunTicks, MaxActiveTnt = MaxActiveTnt,
                 EnablePadlockPower = EnablePadlockPower, TargetPadlocks = TargetPadlocks, PadlockDurationTicks = PadlockDurationTicks, PadlockRespawnDelayTicks = PadlockRespawnDelayTicks,
                 BankRespawnDelayTicks = BankRespawnDelayTicks, ArrowRespawnDelayTicks = ArrowRespawnDelayTicks, SpeedRespawnDelayTicks = SpeedRespawnDelayTicks, MissileRespawnDelayTicks = MissileRespawnDelayTicks,
@@ -78,8 +79,11 @@ namespace PogoDom.Verification
             var registry = new RulesetRegistry();
             registry.Add(new RulesetDefinition("launch-m0-2", RulesetPresets.LaunchM02()));
             registry.Add(new RulesetDefinition("pogodom-loop-v1", RulesetPresets.LoopV1()));
+            registry.Add(new RulesetDefinition("pogodom-loop-v2", RulesetPresets.LoopV2()));
             registry.Add(new RulesetDefinition("pogodom-chaos-v1", RulesetPresets.ChaosV1()));
+            registry.Add(new RulesetDefinition("pogodom-chaos-v2", RulesetPresets.ChaosV2()));
             registry.Add(new RulesetDefinition("pogodom-padlock-v1", RulesetPresets.PadlockV1()));
+            registry.Add(new RulesetDefinition("pogodom-padlock-v2", RulesetPresets.PadlockV2()));
             return registry;
         }
     }

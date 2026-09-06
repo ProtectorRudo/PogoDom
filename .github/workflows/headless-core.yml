@@ -12,7 +12,7 @@ permissions:
 jobs:
   certify-headless:
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,10 +54,10 @@ jobs:
         run: dotnet restore headless/PogoDom.Sim.csproj
       - name: Certify launch baseline over 250 matches
         run: dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 250 --seed 20260905 --variant launch --assert
-      - name: Compare experimental rule families headlessly
+      - name: Compare v1 and v2 experimental families headlessly
         shell: bash
         run: |
-          for variant in loop chaos padlock fusion; do
+          for variant in loop loop2 chaos chaos2 padlock padlock2 fusion; do
             echo "===== $variant ====="
             dotnet run --project headless/PogoDom.Sim.csproj --configuration Release -- --matches 100 --seed 20260905 --variant "$variant" --assert
           done

@@ -49,7 +49,7 @@ namespace PogoDom.Core
 
             if (config.EnableEnclosureCapture && owner != bot.Id && !protectedByRival)
             {
-                var enclosure = EnclosureResolver.PreviewCaptureCount(state.Board, bot.Id, next);
+                var enclosure = EnclosureResolver.PreviewCaptureCount(state.Board, bot.Id, next, config.EnclosureCapturePolicy);
                 if (enclosure > 0) score += Math.Min(30f, enclosure * (bot.BotPersonality == BotPersonality.Banker ? 4.2f : 3.4f));
             }
 

@@ -54,15 +54,25 @@ namespace PogoDom.Core
 
             var enclosed = new List<GridPos>();
             for (var y = 0; y < board.Height; y++)
+            {
                 for (var x = 0; x < board.Width; x++)
                 {
                     var pos = new GridPos(x, y);
                     if (board.OwnerAt(pos) != playerId && !exterior[x, y]) enclosed.Add(pos);
                 }
+            }
             return enclosed;
         }
 
         public static List<EnclosureCaptureResult> CaptureSimultaneous(BoardState board, IReadOnlyList<PlayerState> players)
+        {
+            return CaptureSimultaneous(board, players, EnclosureCapturePolicy.AllUnprotected);
+        }
+
+        public static List<EnclosureCaptureResult> CaptureSimultaneous(
+            BoardState board,
+            IReadOnlyList<PlayerState> players,
+            EnclosureCapturePolicy policy)
         {
             if (board == null) throw new ArgumentNullException(nameof(board));
             if (players == null) throw new ArgumentNullException(nameof(players));
@@ -77,6 +87,10 @@ namespace PogoDom.Core
                 for (var t = 0; t < enclosed.Count; t++)
                 {
                     var pos = enclosed[t];
+                    var owner = board.OwnerAt(pos);
+                    if (policy == EnclosureCapturePolicy.NeutralOnly && owner != TileState.NeutralOwner)
+                        continue;
+
                     List<int> claimants;
                     if (!claims.TryGetValue(pos, out claimants))
                     {
@@ -95,6 +109,7 @@ namespace PogoDom.Core
                 var previousOwner = board.OwnerAt(pos);
                 if (previousOwner == playerId) continue;
                 if (previousOwner >= 0 && IsShielded(players, previousOwner)) continue;
+                if (policy == EnclosureCapturePolicy.NeutralOnly && previousOwner != TileState.NeutralOwner) continue;
 
                 board.SetOwner(pos, playerId);
                 var result = results[playerId];
@@ -109,13 +124,35 @@ namespace PogoDom.Core
 
         public static int PreviewCaptureCount(BoardState board, int playerId, GridPos candidate)
         {
+            return PreviewCaptureCount(board, playerId, candidate, EnclosureCapturePolicy.AllUnprotected);
+        }
+
+        public static int PreviewCaptureCount(
+            BoardState board,
+            int playerId,
+            GridPos candidate,
+            EnclosureCapturePolicy policy)
+        {
             if (board == null) throw new ArgumentNullException(nameof(board));
             if (!board.Contains(candidate)) return 0;
             var previousOwner = board.OwnerAt(candidate);
             if (previousOwner == playerId) return 0;
+
             board.SetOwner(candidate, playerId);
-            try { return FindEnclosed(board, playerId).Count; }
-            finally { board.SetOwner(candidate, previousOwner); }
+            try
+            {
+                var enclosed = FindEnclosed(board, playerId);
+                if (policy == EnclosureCapturePolicy.AllUnprotected) return enclosed.Count;
+
+                var neutral = 0;
+                for (var i = 0; i < enclosed.Count; i++)
+                    if (board.OwnerAt(enclosed[i]) == TileState.NeutralOwner) neutral++;
+                return neutral;
+            }
+            finally
+            {
+                board.SetOwner(candidate, previousOwner);
+            }
         }
 
         private static bool IsShielded(IReadOnlyList<PlayerState> players, int ownerId)

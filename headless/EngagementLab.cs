@@ -6,6 +6,9 @@ using PogoDom.Verification;
 
 internal static class EngagementLab
 {
+    private const double MaximumAverageLongestSpectacleQuietSeconds = 7.5;
+    private const double MaximumTenSecondDeadZoneMatchRate = 0.05;
+
     private sealed class Aggregate
     {
         public string Variant;
@@ -110,6 +113,15 @@ internal static class EngagementLab
         if (a.Matches == 0) return Fail("engagement lab ran zero matches");
         if (a.ActivityBeatTicks == 0) return Fail("engagement detector observed no activity beats");
         if (a.SpectacleBeatTicks == 0) return Fail("engagement detector observed no spectacle beats");
+
+        var averageLongest = a.SumLongestSpectacleQuietSeconds / a.Matches;
+        var tenSecondRate = a.MatchesWithSpectacle10 / (double)a.Matches;
+        if (averageLongest > MaximumAverageLongestSpectacleQuietSeconds)
+            return Fail("average longest spectacle quiet span exceeded " + MaximumAverageLongestSpectacleQuietSeconds.ToString("0.0") + "s");
+        if (tenSecondRate > MaximumTenSecondDeadZoneMatchRate)
+            return Fail("more than 5% of matches contained a 10-second spectacle dead zone");
+        if (a.MatchesWithSpectacle15 != 0)
+            return Fail("at least one match contained a 15-second spectacle dead zone");
         return 0;
     }
 
@@ -131,6 +143,9 @@ internal static class EngagementLab
         Console.WriteLine("spectacle_deadzone_15s_spans_per_match=" + PerMatch(a.SpectacleSpans15, a.Matches));
         Console.WriteLine("spectacle_time_inside_10s_dead_zones=" + Share(a.SpectacleQuietTicks10, a.TotalTicks));
         Console.WriteLine("spectacle_time_inside_15s_dead_zones=" + Share(a.SpectacleQuietTicks15, a.TotalTicks));
+        Console.WriteLine("guardrail_avg_longest_spectacle_quiet_seconds_max=" + MaximumAverageLongestSpectacleQuietSeconds.ToString("0.0"));
+        Console.WriteLine("guardrail_10s_deadzone_match_rate_max=" + MaximumTenSecondDeadZoneMatchRate.ToString("P1"));
+        Console.WriteLine("guardrail_15s_deadzone_matches_max=0");
     }
 
     private static bool StateValid(MatchState state)

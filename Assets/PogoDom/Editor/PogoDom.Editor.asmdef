@@ -1,7 +1,7 @@
 {
   "name": "PogoDom.Editor",
   "rootNamespace": "PogoDom.Editor",
-  "references": ["PogoDom.Runtime", "PogoDom.Core"],
+  "references": ["PogoDom.Runtime", "PogoDom.Core", "PogoDom.Cosmetics"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

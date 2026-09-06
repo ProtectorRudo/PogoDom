@@ -1,0 +1,14 @@
+{
+  "name": "PogoDom.Cosmetics",
+  "rootNamespace": "PogoDom.Cosmetics",
+  "references": ["PogoDom.Core"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

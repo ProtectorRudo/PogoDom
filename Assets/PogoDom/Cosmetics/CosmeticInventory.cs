@@ -82,8 +82,19 @@ namespace PogoDom.Cosmetics
         public void EquipSkillVisual(CosmeticLoadout loadout, CosmeticId id)
         {
             RequireOwned(id);
-            _catalog.Get<SkillVisualDefinition>(id);
-            if (!loadout.SkillVisualIds.Contains(id)) loadout.SkillVisualIds.Add(id);
+            var incoming = _catalog.Get<SkillVisualDefinition>(id);
+
+            // One equipped cosmetic per trigger/context slot. This prevents
+            // purchase order from changing which effect is rendered and keeps
+            // the visual layer deterministic without touching gameplay.
+            for (var i = loadout.SkillVisualIds.Count - 1; i >= 0; i--)
+            {
+                var current = _catalog.Get<SkillVisualDefinition>(loadout.SkillVisualIds[i]);
+                if (current.Trigger == incoming.Trigger && current.PowerContext == incoming.PowerContext)
+                    loadout.SkillVisualIds.RemoveAt(i);
+            }
+
+            loadout.SkillVisualIds.Add(id);
         }
 
         private void RequireOwned(CosmeticId id)

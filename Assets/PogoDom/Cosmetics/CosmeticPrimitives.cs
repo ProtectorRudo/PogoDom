@@ -49,7 +49,13 @@ namespace PogoDom.Cosmetics
         Speed = 5,
         Missile = 6,
         Victory = 7,
-        Defeat = 8
+        Defeat = 8,
+        CrateOpen = 9,
+        Padlock = 10,
+        AreaCapture = 11,
+        ShieldBlock = 12,
+        HazardBlast = 13,
+        Stun = 14
     }
 
     public enum AcquisitionKind

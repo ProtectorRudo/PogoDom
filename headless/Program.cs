@@ -36,6 +36,9 @@ internal static class Program
         var matches = ReadInt(args, "--matches", 500);
         var seed = (uint)ReadInt(args, "--seed", 20260905);
         var strict = HasArg(args, "--assert");
+        if (HasArg(args, "--difficulty-lab"))
+            return RunDifficultyLab(matches, seed, strict);
+
         var variant = ReadString(args, "--variant", "launch").ToLowerInvariant();
         var aggregate = new Aggregate { Variant = variant };
 
@@ -95,6 +98,78 @@ internal static class Program
 
         Print(aggregate);
         return strict ? AssertHealthy(aggregate) : 0;
+    }
+
+    private static int RunDifficultyLab(int matches, uint seed, bool strict)
+    {
+        var hardWins = 0;
+        var invalidStates = 0;
+        long placementTotal = 0;
+        long hardScoreTotal = 0;
+        long bestMediumScoreTotal = 0;
+
+        for (var m = 0; m < matches; m++)
+        {
+            var config = new MatchConfig();
+            var hardSlot = m % 4;
+            var state = MatchFactory.CreateDifficultyLab(config, hardSlot);
+            var runner = new MatchRunner(config, new XorShiftRandom(seed + (uint)(m * 3571)));
+            runner.Initialize(state);
+
+            var safety = 0;
+            while (!state.IsFinished && safety++ < 10000)
+            {
+                runner.Tick(state);
+                if (!StateValid(state))
+                {
+                    invalidStates++;
+                    break;
+                }
+            }
+            if (safety >= 10000 || !state.IsFinished) invalidStates++;
+
+            var standings = MatchOutcome.Standings(state);
+            var hardPlacement = standings.Count;
+            var hardScore = 0;
+            var bestMedium = 0;
+            for (var i = 0; i < standings.Count; i++)
+            {
+                var standing = standings[i];
+                if (standing.PlayerId == hardSlot)
+                {
+                    hardPlacement = i + 1;
+                    hardScore = standing.Score;
+                    if (i == 0) hardWins++;
+                }
+                else if (standing.Score > bestMedium)
+                {
+                    bestMedium = standing.Score;
+                }
+            }
+
+            placementTotal += hardPlacement;
+            hardScoreTotal += hardScore;
+            bestMediumScoreTotal += bestMedium;
+        }
+
+        var winRate = matches == 0 ? 0 : hardWins / (double)matches;
+        var avgPlacement = matches == 0 ? 0 : placementTotal / (double)matches;
+        var avgHardScore = matches == 0 ? 0 : hardScoreTotal / (double)matches;
+        var avgBestMedium = matches == 0 ? 0 : bestMediumScoreTotal / (double)matches;
+
+        Console.WriteLine("POGODOM HARD BOT LAB");
+        Console.WriteLine("matches=" + matches);
+        Console.WriteLine("invalid_states=" + invalidStates);
+        Console.WriteLine("hard_win_rate=" + winRate.ToString("P1"));
+        Console.WriteLine("avg_hard_placement=" + avgPlacement.ToString("0.00"));
+        Console.WriteLine("avg_hard_score=" + avgHardScore.ToString("0.00"));
+        Console.WriteLine("avg_best_medium_score=" + avgBestMedium.ToString("0.00"));
+
+        if (!strict) return 0;
+        if (invalidStates != 0) return Fail("hard bot lab produced invalid states");
+        if (winRate < 0.30) return Fail("hard bot did not establish a measurable advantage over 25% four-player baseline");
+        if (avgPlacement > 2.25) return Fail("hard bot average placement is not stronger than the medium field");
+        return 0;
     }
 
     private static MatchConfig CreateConfig(string variant)

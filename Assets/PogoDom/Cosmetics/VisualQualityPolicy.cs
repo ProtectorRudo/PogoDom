@@ -18,6 +18,7 @@ namespace PogoDom.Cosmetics
         public float OutlineScale { get; }
         public float EnvironmentDensity { get; }
         public int MaxSkillOrbiters { get; }
+        public int MaxAuraOrbiters { get; }
         public bool DecorativeCityLights { get; }
 
         public VisualQualityBudget(
@@ -28,6 +29,7 @@ namespace PogoDom.Cosmetics
             float outlineScale,
             float environmentDensity,
             int maxSkillOrbiters,
+            int maxAuraOrbiters,
             bool decorativeCityLights)
         {
             Tier = tier;
@@ -37,6 +39,7 @@ namespace PogoDom.Cosmetics
             OutlineScale = outlineScale;
             EnvironmentDensity = environmentDensity;
             MaxSkillOrbiters = maxSkillOrbiters;
+            MaxAuraOrbiters = maxAuraOrbiters;
             DecorativeCityLights = decorativeCityLights;
         }
 
@@ -58,11 +61,11 @@ namespace PogoDom.Cosmetics
             switch (tier)
             {
                 case VisualQualityTier.Lite:
-                    return new VisualQualityBudget(tier, 0.45f, 4, 0.13f, 0.62f, 0.50f, 2, false);
+                    return new VisualQualityBudget(tier, 0.45f, 4, 0.13f, 0.62f, 0.50f, 2, 1, false);
                 case VisualQualityTier.Balanced:
-                    return new VisualQualityBudget(tier, 0.72f, 6, 0.18f, 0.82f, 0.75f, 3, true);
+                    return new VisualQualityBudget(tier, 0.72f, 6, 0.18f, 0.82f, 0.75f, 3, 3, true);
                 case VisualQualityTier.Showcase:
-                    return new VisualQualityBudget(tier, 1.00f, 8, 0.22f, 1.00f, 1.00f, 4, true);
+                    return new VisualQualityBudget(tier, 1.00f, 8, 0.22f, 1.00f, 1.00f, 4, 6, true);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(tier));
             }

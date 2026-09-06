@@ -1,4 +1,4 @@
-name: Headless Core
+name: Headless Core + Meta
 
 on:
   push:
@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  test-core:
+  certify-headless:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,12 +20,18 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Restore tests
+      - name: Restore battle tests
         run: dotnet restore headless/PogoDom.Core.Tests.csproj
-      - name: Build tests
+      - name: Build battle tests
         run: dotnet build headless/PogoDom.Core.Tests.csproj --configuration Release --no-restore
-      - name: Test core
+      - name: Test battle core
         run: dotnet test headless/PogoDom.Core.Tests.csproj --configuration Release --no-build --verbosity normal
+      - name: Restore meta tests
+        run: dotnet restore headless/PogoDom.Meta.Tests.csproj
+      - name: Build meta tests
+        run: dotnet build headless/PogoDom.Meta.Tests.csproj --configuration Release --no-restore
+      - name: Test city and nation meta
+        run: dotnet test headless/PogoDom.Meta.Tests.csproj --configuration Release --no-build --verbosity normal
       - name: Restore simulation lab
         run: dotnet restore headless/PogoDom.Sim.csproj
       - name: Run 250 headless matches

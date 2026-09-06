@@ -16,6 +16,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Guard Unity Android project contract
+        shell: bash
+        run: |
+          test -f ProjectSettings/ProjectVersion.txt
+          test -f Packages/manifest.json
+          test -f Assets/PogoDom/Editor/PogoDomAndroidBuild.cs
+          grep -q '^m_EditorVersion: 6000\.3\.23f1$' ProjectSettings/ProjectVersion.txt
+          grep -q '"com\.unity\.render-pipelines\.universal": "17\.3\.0"' Packages/manifest.json
+          grep -q 'PogoDom-development\.apk' Assets/PogoDom/Editor/PogoDomAndroidBuild.cs
       - name: Guard runtime presentation isolation
         shell: bash
         run: |
